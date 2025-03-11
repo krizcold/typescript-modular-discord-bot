@@ -1,0 +1,35 @@
+version: '3.8'
+
+services:
+  discord-bot:
+    container_name: super-modular-discord-bot
+    image: discord-bot
+    restart: unless-stopped
+    environment:
+      DISCORD_TOKEN: 'REPLACE WITH YOUR DISCORD BOT TOKEN'
+      GUILD_ID: 'REPLACE WITH YOUR DISCORD TEST SERVER ID'
+      CLIENT_ID: 'REPLACE WITH THE BOT CLIENT ID'
+    volumes:
+      - /C/DATA/src/commands:/app/src/commands
+      - /C/DATA/src/events:/app/src/events
+      - /C/DATA/src/events/data:/app/src/events/data
+    networks:
+      - pcs
+    # Optional: add x-casaos metadata if you're integrating with CasaOS AppStore
+    x-casaos:
+      architectures:
+        - amd64
+        - arm64
+      main: super-modular-discord-bot
+      author: kriz_cold
+      category: Discord
+      description:
+        en_us: "A super modular Discord bot base. Drop new commands and events into the mounted folders to extend functionality."
+      title:
+        en_us: "Super Modular Discord Bot"
+      port_map: ""
+
+networks:
+  pcs:
+    driver: bridge
+    name: pcs
