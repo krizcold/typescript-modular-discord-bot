@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   super-modular-discord-bot:
     container_name: super-modular-discord-bot
@@ -29,5 +27,4 @@ services:
 
 networks:
   pcs:
-    driver: bridge
-    name: pcs
+    external: true
