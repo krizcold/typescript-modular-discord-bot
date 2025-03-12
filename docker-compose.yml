@@ -1,9 +1,9 @@
 version: '3.8'
 
 services:
-  discord-bot:
+  super-modular-discord-bot:
     container_name: super-modular-discord-bot
-    image: discord-bot
+    image: super-modular-discord-bot
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: 'REPLACE WITH YOUR DISCORD BOT TOKEN'
