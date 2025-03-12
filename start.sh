@@ -2,27 +2,33 @@
 
 echo "Starting Discord bot..."
 
-# If the mounted volume (/app/smdb-source) is empty, copy the default src files
-if [ ! "$(ls -A /app/smdb-source 2>/dev/null)" ]; then
-    echo "Copying default source files to /app/smdb-source..."
+# **Ensure smdb-source exists** (Recover if missing)
+if [ ! -d "/app/smdb-source" ] || [ -z "$(ls -A /app/smdb-source 2>/dev/null)" ]; then
+    echo "Initializing source folder (/app/smdb-source)..."
+    mkdir -p /app/smdb-source
     cp -r /app/src/* /app/smdb-source/
 fi
 
-# **Delete existing dist/ folder to reflect script removals**
+# **Create a clean dist folder to ensure removed files are deleted**
 if [ -d "/app/dist" ]; then
     echo "Removing old compiled files..."
     rm -rf /app/dist
+    sleep 0.1
 fi
+mkdir -p /app/dist
 
-# Compile TypeScript
-echo "Compiling TypeScript... in directory: $(pwd)"
+# **Ensure correct TypeScript config** (force production config)
+echo "Applying production TypeScript configuration..."
+cp /app/tsconfigprod.json /app/tsconfig.json
+
+# **Compile TypeScript**
+echo "Compiling TypeScript..."
 npm run build
 
-# Copy JavaScript files from smdb-source to dist (to allow raw JS files)
+# **Copy JavaScript files from smdb-source to dist** (Preserves folders)
 echo "Copying JavaScript files..."
 cd /app/smdb-source && find . -name "*.js" -exec cp --parents {} /app/dist/ \;
 
+# **Start the bot**
 cd /app
-
-# Start the bot
 node dist/index.js

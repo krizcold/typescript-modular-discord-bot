@@ -4,11 +4,8 @@ FROM node:18-alpine
 # Set working directory
 WORKDIR /app
 
-# Copy the production TypeScript config
-COPY tsconfigprod.json /app/tsconfig.json
-
 # Copy package.json and install dependencies
-COPY package*.json ./
+COPY package*.json tsconfigprod.json ./ 
 RUN npm install
 
 # Create necessary directories
