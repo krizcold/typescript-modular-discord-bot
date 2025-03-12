@@ -4,6 +4,8 @@ import * as path from 'path';
 import getAllFiles from '../utils/getAllFiles';
 import 'dotenv/config';
 
+const isProd = process.env.NODE_ENV === 'development' ? false : true;
+
 /**
  * Collects all required intents from files in a given directory.
  * Each file may export a property `requiredIntents` (an array of numbers).
@@ -57,8 +59,13 @@ function mergeIntents(...intentArrays: number[][]): number[] {
  * it reads the event files and registers a listener.
  */
 async function registerEvents(client: Client) {
+  const eventsDistDir = path.join(__dirname, '..', 'events');
+  const eventsSrcDir = path.join(__dirname, '..', 'src', 'events');
+
   console.log("Registering events...");
-  const eventsDir = path.join(__dirname, '..', 'events');
+  const eventsDir = fs.existsSync(eventsDistDir) ? eventsDistDir : eventsSrcDir;
+  console.log(`Using events directory: ${eventsDir}`);
+  
   const eventFolders = getAllFiles(eventsDir, true);
 
   const eventMap: Record<string, string[]> = {}; // Stores events per event type (ready, interactionCreate, etc.)
@@ -79,7 +86,9 @@ async function registerEvents(client: Client) {
   if (!eventMap['ready']) {
     eventMap['ready'] = [];
   }
-  const commandInitFile = path.join(__dirname, 'registerCommands.js');
+  
+  const commandInitFile = path.join(__dirname, isProd ? 'registerCommands.js' : 'registerCommands.ts');
+  
   eventMap['ready'].unshift(commandInitFile); // Ensure it's the first file in "ready"
 
   //console.log("Final event execution order:", eventMap);

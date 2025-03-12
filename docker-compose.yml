@@ -10,9 +10,7 @@ services:
       GUILD_ID: 'REPLACE WITH YOUR DISCORD TEST SERVER ID'
       CLIENT_ID: 'REPLACE WITH THE BOT CLIENT ID'
     volumes:
-      - /C/DATA/src/commands:/app/src/commands
-      - /C/DATA/src/events:/app/src/events
-      - /C/DATA/src/events/data:/app/src/events/data
+      - /C/DATA/smdb-source:/app/smdb-source
     networks:
       - pcs
     # Optional: add x-casaos metadata if you're integrating with CasaOS AppStore
