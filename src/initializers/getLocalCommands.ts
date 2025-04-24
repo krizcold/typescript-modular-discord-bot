@@ -1,5 +1,5 @@
 import path from 'path';
-import getAllFiles from '../utils/getAllFiles';
+import getAllFiles from '../internalUtils/getAllFiles';
 
 /**
  * Scans the commands folder and returns an array of command objects,

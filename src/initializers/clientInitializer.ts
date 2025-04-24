@@ -1,7 +1,7 @@
 import { Client, GatewayIntentBits } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
-import getAllFiles from '../utils/getAllFiles';
+import getAllFiles from '../internalUtils/getAllFiles';
 import 'dotenv/config';
 
 const isProd = process.env.NODE_ENV === 'development' ? false : true;
