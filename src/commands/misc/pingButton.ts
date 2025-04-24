@@ -8,7 +8,7 @@ import {
   ButtonInteraction, 
   MessageFlags
 } from 'discord.js';
-import { registerButtonHandler } from '../../events/interactionCreate/buttonHandler';
+import { registerButtonHandler } from '../../internalSetup/events/interactionCreate/buttonHandler';
 
 interface CommandOptions {
   name: string;
@@ -47,6 +47,6 @@ const pingButtonCommand: CommandOptions = {
 // Register button handler
 registerButtonHandler('ping-response', async (client: Client, interaction: ButtonInteraction) => {
   await interaction.reply({ content: `Pong! 🏓`, flags: MessageFlags.Ephemeral });
-});
+}, null);
 
 export = pingButtonCommand;

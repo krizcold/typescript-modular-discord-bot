@@ -1,5 +1,5 @@
 import { Client, CommandInteraction, ContextMenuCommandInteraction, Interaction, PermissionsBitField, MessageFlags } from 'discord.js';
-import getLocalCommands from '../../initializers/getLocalCommands';
+import getLocalCommands from '../../utils/getLocalCommands';
 
 const devs = process.env.DEVS?.split(',') || []; // List of developer IDs
 const testServer = process.env.GUILD_ID || ''; // Test server ID

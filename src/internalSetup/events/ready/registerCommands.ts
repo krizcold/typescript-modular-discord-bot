@@ -5,10 +5,10 @@ import {
   ApplicationCommand,
   ApplicationCommandType,
   PermissionsBitField } from 'discord.js';
-import getLocalCommands from './getLocalCommands';
-import areCommandsDifferent from './areCommandsDifferent';
+import getLocalCommands from '../../utils/getLocalCommands';
+import areCommandsDifferent from '../../utils/areCommandsDifferent';
 import 'dotenv/config';
-import { getConfigProperty } from '../internalUtils/configManager';
+import { getConfigProperty } from '../../utils/configManager';
 
 const testMode = getConfigProperty<boolean>('testMode', false);
 const guildId = process.env.GUILD_ID;

@@ -1,5 +1,5 @@
 import path from 'path';
-import getAllFiles from '../internalUtils/getAllFiles';
+import getAllFiles from './getAllFiles';
 
 /**
  * Scans the commands folder and returns an array of command objects,
@@ -10,7 +10,7 @@ import getAllFiles from '../internalUtils/getAllFiles';
  */
 export default function getLocalCommands(exceptions: string[] = []): any[] {
   const localCommands: any[] = [];
-  const commandsDir = path.join(__dirname, '..', 'commands');
+  const commandsDir = path.join(__dirname, '../../', 'commands');
   const commandCategories = getAllFiles(commandsDir, true);
 
   for (const commandCategory of commandCategories) {
