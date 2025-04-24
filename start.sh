@@ -2,9 +2,9 @@
 
 echo "Starting Discord bot..."
 
-# **Ensure smdb-source exists** (Recover if missing)
-if [ ! -d "/app/smdb-source" ] || [ -z "$(ls -A /app/smdb-source 2>/dev/null)" ]; then
-    echo "Initializing source folder (/app/smdb-source)..."
+# **Ensure smdb-source exists** (Recover if missing or if it's empty)
+if [ ! -d "/app/smdb-source" ] || [ ! "$(ls -A /app/smdb-source)" ]; then
+    echo "--> Initializing source folder (/app/smdb-source)..."
     mkdir -p /app/smdb-source
     cp -r /app/src/* /app/smdb-source/
 fi
