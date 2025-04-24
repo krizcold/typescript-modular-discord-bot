@@ -21,10 +21,13 @@ interface CommandOptions {
 const pingCommand: CommandOptions = {
   name: 'ping',
   description: 'Pong!',
-  // devOnly: true,
+  // devOnly: false,
   testOnly: true,
   // options: [],
-  requiredIntents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent],
+  requiredIntents: [
+    GatewayIntentBits.Guilds, 
+    GatewayIntentBits.MessageContent
+  ],
 
   callback: (client: Client, interaction: CommandInteraction) => {
     interaction.reply(`Pong! ${client.ws.ping}ms.`);

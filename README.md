@@ -4,219 +4,254 @@
 
 This bot is designed to work with self-contained commands and events, automating the process of adding/removing features to the bot. Once set up, it should be as simple as adding a new file to the commands or events folder, and restarting the bot.
 
-# Registering the bot
+---
+
+<details>
+<summary style="font-weight: bold; font-size: 1.5em; cursor: pointer;">📒 Registering the Bot Account</summary>
+
 *(If you already have a registered bot account, you can skip this)*
 
-**1)** First, you need to create a new application in the Discord Developer Portal:
-- Make sure you are logged in to your Discord account on your browser
-- Go to https://discord.com/developers/applications and click on "New Application"
+1.  **Create Application:** First, you need to create a new application in the Discord Developer Portal:
+    * Make sure you are logged in to your Discord account on your browser.
+    * Go to <https://discord.com/developers/applications> and click on "New Application".
+    
+    ![New Application](readmeAssets/img0.png)
 
-![New Application](readmeAssets/img0.png)
+2.  **Name Application:** Give your application (bot) a name, and click on "Create".
 
-**2)** Give your bot a name, and click on "Create"
+    ![Create Bot](readmeAssets/img1.png)
 
-![Create Bot](readmeAssets/img1.png)
+3.  **Bot Settings:** In the left menu, click on "Bot". Here you can set the bot's icon and username.
 
-**3)** In the left menu, click on "Bot", here you can set the bot's icon, name, and token
+    ![Bot Tab](readmeAssets/img2.png)
 
-![Bot Tab](readmeAssets/img2.png)
+4.  **Enable Intents:** Scroll down in the "Bot" section to "Privileged Gateway Intents". Enable the following options:
+    * ✅ **Presence Intent**
+    * ✅ **Server Members Intent**
+    * ✅ **Message Content Intent**
+    * Click **Save Changes**.
+    *(These intents grant your bot necessary permissions to see user statuses, member lists, and message content, which are often required for common bot features.)*
 
-**4)** Enable Privileged Gateway Intents
-- Scroll down in the "Bot" section.
-- Enable the following options under "Privileged Gateway Intents":
-  - ✅ **Presence Intent**
-  - ✅ **Server Members Intent**
-  - ✅ **Message Content Intent**
-- Click **Save Changes**.
+</details>
 
---------------------------------------------
+---
 
-# Adding the Bot to Your Server
+<details>
+<summary style="font-weight: bold; font-size: 1.5em; cursor: pointer;">➕ Adding the Bot to Your Server</summary>
 
-1. In the Discord Developer Portal, go to **OAuth2** → **URL Generator**.
+1.  **URL Generator:** In the Discord Developer Portal, go to **OAuth2** → **URL Generator**.
 
-![OAuth2](readmeAssets/img3.png)
+    ![OAuth2](readmeAssets/img3.png)
 
-2. Select the following **Scopes**:
-   - `bot`
-   - `applications.commands`
+2.  **Select Scopes:** Choose the following **Scopes**:
+    * `bot` (Allows the application to join servers as a bot)
+    * `applications.commands` (Allows the bot to register slash commands)
+    > <span style="color:gray;">[ i ] *Other scopes for advanced features can be found in the documentation:* <https://discord.com/developers/docs/topics/oauth2#shared-resources-oauth2-scopes></span>
 
-   <span style="color:gray;">[ i ] *Other scopes for Advanced features can be found in the documentation:* https://discord.com/developers/docs/topics/oauth2#shared-resources-oauth2-scopes
-3. Scroll down and select **Bot permissions** based on what your bot needs. *(**Or Administrator** if you aren't sure)*
-4. Copy the generated URL and paste it into your browser.
-5. Select a server and authorize the bot.
+3.  **Set Permissions:** Scroll down and select **Bot permissions** based on what functionalities your bot will need. For testing or if unsure, you can select **Administrator**, but grant permissions carefully for production bots.
 
---------------------------------------------
+4.  **Invite:** Copy the generated URL at the bottom and paste it into your browser's address bar.
 
-# For hosting
+5.  **Authorize:** Select the server you want to add the bot to from the dropdown menu and click "Continue", then "Authorize". Complete any verification steps (like CAPTCHA).
 
-You will need to the bot's **Discord Token**, **Client ID**, and **Guild ID** to **TEST** the bot.
+</details>
 
-**Client ID**:
+---
 
-- **1)** In the Discord Developer Portal, go to the **[General Information]** tab.
+<details>
+<summary style="font-weight: bold; font-size: 1.5em; cursor: pointer;">🔑 Getting Credentials for Hosting</summary>
 
-  ![Bot Id](readmeAssets/img5.png)
+You will need the bot's **Discord Token**, **Client ID**, and your **Test Server (Guild) ID** to configure and run the bot.
 
-- **2)** Copy the **APPLICATION ID** and save it for later.
+**Client ID (Application ID):**
 
-  ![Bot Id 2](readmeAssets/img6.png)
+1.  In the Discord Developer Portal, go to the **OAuth2** → **General** tab.
 
+    ![Bot Id](readmeAssets/img5.png)
+2.  Copy the **APPLICATION ID** and save it securely.
 
-**Discord Token**:
+    ![Bot Id 2](readmeAssets/img6.png)
 
-- **1)** In the Discord Developer Portal, go to the **[Bot]** tab.
+**Discord Token:**
 
-  ![Bot Tab](readmeAssets/img2.png)
-  
-- **2)** Then click the [RESET TOKEN] button to generate a new token, and save it for later.
+1.  In the Discord Developer Portal, go to the **Bot** tab.
 
-  ![Bot Token](readmeAssets/img4.png)
+    ![Bot Tab](readmeAssets/img2.png)
+2.  Under the bot's username, find the "Token" section. Click **Reset Token**. Confirm the action.
 
-**Guild ID**:
+    ![Bot Token](readmeAssets/img4.png)
+3.  **Immediately copy the new token and save it securely.** You will not be able to see it again after closing the window. **Never share this token publicly.**
 
-- **1)** Ensure you have Developer Mode enabled in Discord.
-  
-  ![Dev Mode](readmeAssets/img7.png)
+**Guild ID (Test Server ID):**
 
-- **2)** In Discord, go to the server you want to test the bot in.
+1.  **Enable Developer Mode:** In your Discord client (desktop or web), go to User Settings → Advanced → Enable **Developer Mode**.
 
-- **3)** Right-click on the server name and click on "Copy ID".
+    ![Dev Mode](readmeAssets/img7.png)
+2.  **Copy Server ID:** Go to the server you want to use for testing. Right-click on the server's icon or name in the server list on the left and click **Copy Server ID**.
 
-![Guild Id](readmeAssets/img8.png)
+    ![Guild Id](readmeAssets/img8.png)
 
+### Hosting Options
 
+#### Host Using Yundera
 
-## Host Using Yundera
-[ ! ] Work in progress
-- Go to the Credentials tab in the Discord bot App, and copy the tokens:
-  - **Client ID**
-  - **Discord Token**
-  - **Test Guild ID**
+> [ ! ] Work in progress - Instructions needed.
+> * You will need the **Client ID**, **Discord Token**, and **Test Guild ID** obtained above.
 
-## Self-Hosting
-- To Do
-- Create a .env file in the root folder of the bot, and add the following:
-```env
-DISCORD_TOKEN=*******************
-GUILD_ID=*************
-CLIENT_ID=************
-```
-- Replace the asterisks with the respective values
+#### Self-Hosting
 
---------------------------------------------
+> [ ! ] To Do - Detailed steps for different environments (e.g., Docker, PM2, systemd) needed.
 
-# Running the Bot
+* **Environment Variables:** Create a `.env` file in the root folder of the project. Add your credentials like this:
+    ```env
+    # .env file
+    DISCORD_TOKEN=YOUR_DISCORD_BOT_TOKEN_HERE
+    GUILD_ID=YOUR_TEST_SERVER_ID_HERE
+    CLIENT_ID=YOUR_BOT_APPLICATION_ID_HERE
+    # Optional: Add developer IDs separated by commas
+    # DEVS=YOUR_USER_ID,ANOTHER_USER_ID
+    ```
+* Replace the placeholder values with the actual credentials you copied earlier.
 
-## Using Yundera
-[ ! ] Work in progress
+</details>
 
-## Self-Hosting
-- To Do
+---
 
---------------------------------------------
+<details>
+<summary style="font-weight: bold; font-size: 1.5em; cursor: pointer;">▶️ Running the Bot</summary>
 
-# For Development
+#### Using Yundera
 
-## First steps
-1) To run the bot, you need to have node.js installed on your computer.
-You can download it from https://nodejs.org/en/download/
+> [ ! ] Work in progress - Instructions needed.
 
-2) After installing node.js, you need to install the dependencies.
-To do that, open the terminal in the bot's folder and install npm:
-```bash
-cd path/to/bot
-npm install
-```
-*For example:*
-```bash
-cd C:/GitHub/projects/waterflame-bot
-npm install
-```
-3) To start hosting the bot locally, run:
-```bash
-npm run dev
-```
+#### Self-Hosting (Development)
 
-## Modular environment system
-*You can ctrl + click on the following links to go directly to that file inside VSCode*
-1) The bot will first run [index.js](./src/index.js)
-2) Here the bot will log in, setting up its "intents" (it's permissions)
-3) This file will then run [eventHandler.js](./src/handlers/eventHandler.js) to handle events
-4) The eventHandler will register all files inside the [events](./src/events) folder, in alphabetical order
+> [ ! ] To Do - Instructions for production running needed.
 
-*All scripts will use the **name of the folder** as the event name*
+1.  **Node.js:** Ensure you have Node.js installed (LTS version recommended). Download from <https://nodejs.org/>.
+2.  **Install Dependencies:** Open a terminal or command prompt in the project's root folder and run:
+    ```bash
+    npm install
+    ```
+3.  **Create `.env` File:** Make sure you have created the `.env` file with your credentials as described in the "For Hosting" section.
+4.  **Run in Development Mode:** Start the bot using nodemon for automatic restarts on code changes:
+    ```bash
+    npm run dev
+    ```
+    *(This uses `ts-node` to run TypeScript directly.)*
+5.  **Build and Run (Production-like):** To compile TypeScript and run the JavaScript output:
+    ```bash
+    npm run build
+    npm run start
+    ```
 
-*For example, the script [/src/events/**messageCreate**/autoReact.js](./src/events/messageCreate/autoReact.js) will trigger whenever a user sends a message*
+</details>
 
-5) Once the bot is ready, it will run all **events** inside the [ready](./src/events/ready) folder
-6) One of these events is [01registerCommands.js](./src/events/ready/01registerCommands.js), which will register all commands. *(The name of the folders inside the [commands](./src/commands) folder is mostly aesthetic, to keep the code organized)*
+---
 
-**Important! Note that this script's name starts with "01" to ensure it runs first!**
+<details>
+<summary style="font-weight: bold; font-size: 1.5em; cursor: pointer;">💻 For Development</summary>
 
-7) [interactionCreate](./src/events/interactionCreate) events will trigger whenever a user interacts with the bot, like sending a command, or clicking a button
-8) [handleCommands.js](./src/events/interactionCreate/handleCommands.js) will trigger whenever a user sends a command, this will first validate the existance and permissions of the command, and then run it, for this, command scripts need to be inside the [commands](./src/commands) folder
+### Project Structure & Flow
 
-**Note that we build command as a class "package", to make it easier to manage and add new commands**
-```javscript
-const commandData = {
-  name: "commandName",                    // Required. 1-32 characters, lowercase.
-  description: "Command description",     // Required. 1-100 characters. Ignored for context menu commands.
-  type: 1,                                // Optional. 1 = Slash command, 2 = User context menu, 3 = Message context menu, 4 Invoke app activity
-  options: [],                            // Optional. Command options (subcommands, choices, etc.).
-  default_member_permissions: null,       // Optional. Set specific permissions for the command. Use permission bitfields (or `null` for everyone).
-  nsfw: false,                            // Optional. Mark command as NSFW (default is false).
-};
-```
-*These are all defined in their respective command files, and is the result of our custom conversion to Discord's API*
+*(You can Click on the file paths to navigate directly to the files.)*
 
-*Fore more details, check the [Discord API documentation](https://discord.com/developers/docs/interactions/application-commands)*
+1.  **Entry Point:** The bot starts execution with [`src/index.ts`](./src/index.ts).
+2.  **Initialization:** This file primarily imports and runs [`src/initializers/clientInitializer.ts`](./src/initializers/clientInitializer.ts).
+3.  **Client Setup:** `clientInitializer.ts` creates the Discord `Client` instance, dynamically determines required `GatewayIntentBits` by scanning command and event files, registers event handlers, and logs the bot in.
+4.  **Event Handling:** The `registerEvents` function in `clientInitializer.ts` scans the [`src/events`](./src/events) directory. For each sub-folder (e.g., `ready`, `interactionCreate`), it registers listeners. The **folder name** dictates the event being listened to (e.g., files in `src/events/messageCreate/` run on the `messageCreate` event). Files within an event folder are executed in alphabetical order.
+5.  **Command Registration:** The `ready` event triggers [`src/initializers/registerCommands.ts`](./src/initializers/registerCommands.ts) (ensured by `clientInitializer.ts`). This script scans the [`src/commands`](./src/commands) directory, compares local command definitions with those registered on Discord (globally or on the test guild), and creates, updates, or deletes commands as necessary via the Discord API.
+6.  **Command Execution:** When a user uses a command, the `interactionCreate` event fires. [`src/events/interactionCreate/handleCommands.ts`](./src/events/interactionCreate/handleCommands.ts) receives the interaction, finds the corresponding local command object (based on the command name), performs checks (like `devOnly`, `testOnly`, permissions), and executes the command's `callback` function.
 
-## Adding new commands
-- As explained in the previous section, commands follow a Per-Folder structure, so, you'll have to add a script inside the [commands](./src/commands) folder, you can use [ping.js](./src/commands/misc/ping.js) as a template:
-```javascript
-export = {
-  name: 'ping',                  // Required. The name of the command (/ping)
-  description: 'Pong!',          // Required. The description of the command
-  permissionsRequired: [],       // Recommended. Specific permissions required to use the command
-  devOnly: false,                // Optional. If true, only the bot owner can use the command
-  testOnly: true,                // Optional. If true, the command will only be available in the test server
-  options: [],                   // Optional. Command options (subcommands, choices, etc.)
+### Adding New Commands (Custom Format)
+
+This bot uses a modular system where command logic is self-contained in files within the [`src/commands`](./src/commands) directory (subfolders are for organization only).
+
+1.  **Create File:** Create a new `.ts` file inside a subfolder of `src/commands/` (e.g., `src/commands/utility/myCommand.ts`).
+2.  **Define Command Object:** Use the following structure (you can use [`src/commands/misc/ping.ts`](./src/commands/misc/ping.ts) as a template):
+
+    ```typescript
+    import { Client, CommandInteraction, GatewayIntentBits } from 'discord.js';
+
+    export = {
+      name: 'ping',                  // Required. The name of the command (/ping)
+      description: 'Pong!',          // Required. The description of the command
+      permissionsRequired: [],       // Recommended. Specific permissions required to use the command
+      devOnly: false,                // Optional. If true, only the bot owner can use the command
+      testOnly: true,                // Optional. If true, the command will only be available in the test server
+      options: [],                   // Optional. Command options (subcommands, choices, etc.)
+      requiredIntents: [             // Highly recommended. Intents required for the command to work
+        GatewayIntentBits.Guilds, 
+        GatewayIntentBits.MessageContent
+      ],
 
 
-  /*
-    Your command initialization code here
-    This will run when the bot starts
-  */
+      /*
+        Your command initialization code here
+        This will run when the bot starts
+      */
 
-  const message = "Pong!";
+      const message = "Pong!";
 
-  callback: (client, interaction) => {
+      callback: (client, interaction) => {
 
-    /*
-      Your command code here
-      This will run when the command is called
-    */
+        /*
+          Your command code here
+          This will run when the command is called
+        */
 
-    const fullMessage = `${message} ${client.ws.ping}ms.`;
-    interaction.reply(fullMessage);
-  },
-};
-```
+        const fullMessage = `${message} ${client.ws.ping}ms.`;
+        interaction.reply(fullMessage);
+      },
+    };
 
-## Adding new events
-- To Do
+    export = pingCommand;
+    ```
 
+3.  **Restart Bot:** The command will be automatically registered or updated the next time the bot starts (when `registerCommands.ts` runs).
 
-## Exporting context
-If you need to export the code's context, you can simply run:
-```bash
-npm run exportContext
-```
-*This will create a new file called **contextExport.txt** in the root folder of the bot, containing the context of the basic functionality and base structure of the bot*
+### Adding New Commands (Raw Format)
 
-You can also run:
-```bash
-npm run exportContext --all
-```
-*This will create a file with ALL the context of the bot, including all commands and events*
+> [ ! ] To Do - Implement the logic in `registerCommands.ts` to detect and handle raw command definitions.
+
+* **(Planned):** For advanced use or compatibility, you will be able to define a command by exporting an object that directly matches the [Discord API's Application Command structure](https://discord.com/developers/docs/interactions/application-commands#application-command-object-application-command-structure).
+* **(Planned):** These files **must not** export a `callback` function. The registration script will detect the absence of `callback` and treat the exported object as a raw definition.
+* **(Planned):** You will still be able to add `testOnly: true` to register the raw command to the test guild. The script will handle prefixing the description if needed.
+* **(Planned):** You will need a separate event handler (likely in `src/events/interactionCreate/`) to manually handle interactions for commands registered this way, as they won't have the automatic `callback` execution.
+
+### Adding New Events
+
+> [ ! ] To Do - Provide detailed steps and examples. Explain how the `clientInitializer.ts` registers events based on folder names.
+
+* Create a subfolder inside [`src/events`](./src/events) named after the [Discord.js Client event](https://discord.js.org/docs/packages/discord.js/main/Client:Class#events) you want to listen for (e.g., `messageCreate`, `guildMemberAdd`).
+* Create a `.ts` file inside that folder (e.g., `src/events/messageCreate/logMessages.ts`).
+* Export a default async function that accepts `client` and the event arguments.
+
+    ```typescript
+    import { Client, Message } from 'discord.js';
+
+    export default async (client: Client, message: Message) => {
+      // Code to run when the event occurs
+      if (message.author.bot) return;
+      console.log(`Message from ${message.author.tag}: ${message.content}`);
+    };
+    ```
+* *(Planned: Explain how to handle raw event listeners if that feature is added).*
+
+### Exporting Context
+
+If you need to provide the bot's code context to an AI or for review, you can use the built-in export script:
+
+* **Basic Context (Core files + Root files):**
+    ```bash
+    npm run exportContext
+    ```
+* **Full Context (Including all Commands and Events):**
+    ```bash
+    npm run exportContext --all
+    ```
+* This will generate a file named `contextExport.txt` in the project's root directory containing the formatted content of the selected project files.
+
+</details>
+
+---
