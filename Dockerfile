@@ -11,6 +11,9 @@ RUN npm install
 # Create necessary directories
 RUN mkdir -p /app/smdb-source /app/dist
 
+# Grant full permissions to the smdb-source directory
+RUN chmod -R 777 /app/smdb-source
+
 # Copy the initial src/ directory
 COPY src /app/src
 
