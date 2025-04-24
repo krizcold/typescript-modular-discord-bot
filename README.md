@@ -206,3 +206,17 @@ export = {
 
 ## Adding new events
 - To Do
+
+
+## Exporting context
+If you need to export the code's context, you can simply run:
+```bash
+npm run exportContext
+```
+*This will create a new file called **contextExport.txt** in the root folder of the bot, containing the context of the basic functionality and base structure of the bot*
+
+You can also run:
+```bash
+npm run exportContext --all
+```
+*This will create a file with ALL the context of the bot, including all commands and events*

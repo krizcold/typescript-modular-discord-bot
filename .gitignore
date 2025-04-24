@@ -131,3 +131,5 @@ dist
 
 # config
 config.json
+
+exportContext.txt
