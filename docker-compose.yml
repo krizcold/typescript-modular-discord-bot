@@ -1,7 +1,7 @@
 services:
   super-modular-discord-bot:
     container_name: super-modular-discord-bot
-    image: super-modular-discord-bot
+    image: krizcold/super-modular-discord-bot:latest
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: 'REPLACE WITH YOUR DISCORD BOT TOKEN'
@@ -11,14 +11,13 @@ services:
       - /C/DATA/smdb-source:/app/smdb-source
     networks:
       - pcs
-    # Optional: add x-casaos metadata if you're integrating with CasaOS AppStore
     x-casaos:
       architectures:
         - amd64
         - arm64
       main: super-modular-discord-bot
       author: kriz_cold
-      category: Discord
+      category: Chat
       description:
         en_us: "A super modular Discord bot base. Drop new commands and events into the mounted folders to extend functionality."
       title:
