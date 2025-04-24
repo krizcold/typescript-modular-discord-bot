@@ -10,6 +10,7 @@ const rootFilesToInclude = [
     'Dockerfile', // Assuming this exists
     'docker-compose.yml',
     'start.sh' // Assuming this exists
+    // README.md will be handled separately
 ];
 const excludedDirs = ['node_modules', 'dist', '.git', 'scripts']; // Directories to always exclude
 const optionalDirs = ['commands', 'events']; // Directories to potentially include
@@ -76,14 +77,13 @@ async function exportContext() {
     console.log('Starting context export...');
 
     // Determine if optional directories should be included by checking for '--all' flag
-    // process.argv includes ['node', 'scripts/exportContext.js', ...args]
-    const includeOptional = process.argv.includes('--all'); // Check if '--all' exists anywhere in the arguments
+    const includeOptional = process.argv.includes('--all');
     console.log(`Including optional directories ('${optionalDirs.join(', ')}'): ${includeOptional}`);
 
     let outputContent = '';
 
     // 1. Add App Description from package.json
-    const packageJsonPath = path.resolve(__dirname, '..', 'package.json'); // Go up one level from scripts/
+    const packageJsonPath = path.resolve(__dirname, '..', 'package.json');
     const packageJsonContent = readFileContent(packageJsonPath);
     if (packageJsonContent) {
         try {
@@ -97,23 +97,36 @@ async function exportContext() {
          outputContent += "App Description: package.json not found.\n\n";
     }
 
+    // 2. Add README.md content
+    console.log('Processing README.md...');
+    const readmePath = path.resolve(__dirname, '..', 'README.md');
+    const readmeContent = readFileContent(readmePath);
+    if (readmeContent !== null) {
+        const relativePath = path.relative(path.resolve(__dirname, '..'), readmePath);
+        const posixPath = relativePath.split(path.sep).join(path.posix.sep); // Use POSIX separators
+        outputContent += `${posixPath}:\n${readmeContent}\n\n`;
+        console.log(`  Added: ${posixPath}`);
+    }
 
-    // 2. Process Root Files
-    console.log('Processing root files...');
+
+    // 3. Process Other Root Files (excluding README.md again)
+    console.log('Processing other root files...');
     for (const fileName of rootFilesToInclude) {
-        const filePath = path.resolve(__dirname, '..', fileName); // Go up one level
+        // Skip README if it was accidentally left in the array
+        if (fileName.toLowerCase() === 'readme.md') continue;
+
+        const filePath = path.resolve(__dirname, '..', fileName);
         const content = readFileContent(filePath);
         if (content !== null) {
             // Use relative path for display
             const relativePath = path.relative(path.resolve(__dirname, '..'), filePath);
-            // Use POSIX separators for consistency in the output file
-            const posixPath = relativePath.split(path.sep).join(path.posix.sep);
+            const posixPath = relativePath.split(path.sep).join(path.posix.sep); // Use POSIX separators
             outputContent += `${posixPath}:\n${content}\n\n`;
             console.log(`  Added: ${posixPath}`);
         }
     }
 
-    // 3. Process 'src' Directory
+    // 4. Process 'src' Directory
     console.log(`Processing '${srcDir}' directory...`);
     const srcPath = path.resolve(__dirname, '..', srcDir);
     let currentExcluded = [...excludedDirs];
@@ -139,7 +152,7 @@ async function exportContext() {
          }
     }
 
-    // 4. Write to Output File
+    // 5. Write to Output File
     const outputFilePath = path.resolve(__dirname, '..', outputFileName);
     try {
         // Trim trailing newlines before writing
