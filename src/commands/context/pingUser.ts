@@ -6,19 +6,9 @@ import {
 } from 'discord.js';
 
 // Define structure for context menu commands if desired (optional)
-interface ContextMenuCommandOptions {
-  name: string; // Name displayed in the context menu
-  type: ApplicationCommandType.User | ApplicationCommandType.Message; // Must be User or Message
-  testOnly?: boolean;
-  devOnly?: boolean;
-  permissionsRequired?: string[];
-  botPermissions?: string[];
-  requiredIntents?: number[];
-  // No description or options for context menu commands
-  callback: (client: Client, interaction: UserContextMenuCommandInteraction | any) => void; // Use specific interaction type
-}
+import { ContextMenuCommandOptions } from '../../types/CommandTypes'; // Adjust path as needed
 
-const pingUserCommand: ContextMenuCommandOptions = {
+const pingUserCommand: ContextMenuCommandOptions<UserContextMenuCommandInteraction> = {
   name: 'ping-user', // Use hyphen
   type: ApplicationCommandType.User, // Specify Type 2 for User context menu
   testOnly: true, // Register in test guild only

@@ -4,25 +4,15 @@ import {
   ApplicationCommandType,
   GatewayIntentBits
 } from 'discord.js';
+import { ContextMenuCommandOptions } from '../../types/CommandTypes';
 
-// Define structure for context menu commands if desired (optional)
-interface ContextMenuCommandOptions {
-  name: string; // Name displayed in the context menu
-  type: ApplicationCommandType.User | ApplicationCommandType.Message; // Must be User or Message
-  testOnly?: boolean;
-  devOnly?: boolean;
-  permissionsRequired?: string[];
-  botPermissions?: string[];
-  requiredIntents?: number[]; // Use GatewayIntentBits if importing
-  // No description or options for context menu commands
-  callback: (client: Client, interaction: MessageContextMenuCommandInteraction | any) => void; // Use specific interaction type
-}
-
-const pingMessageCommand: ContextMenuCommandOptions = {
-  name: 'ping-message', // Use hyphen
-  type: ApplicationCommandType.Message, // Specify Type 3 for Message context menu
-  testOnly: true, // Register in test guild only
+const pingMessageCommand: ContextMenuCommandOptions<MessageContextMenuCommandInteraction> = {
+  name: 'ping-message',
+  type: ApplicationCommandType.Message,
+  testOnly: true,
   requiredIntents: [GatewayIntentBits.Guilds],
+  permissionsRequired: ['SendMessages', 'ReadMessageHistory'],
+  botPermissions: ['SendMessages'],
 
   callback: async (client: Client, interaction: MessageContextMenuCommandInteraction) => {
     // Defer the reply immediately (visible)
@@ -44,7 +34,6 @@ const pingMessageCommand: ContextMenuCommandOptions = {
       await interaction.editReply(replyContent);
     } catch (error) {
       console.error(`Error editing reply for Ping Message interaction:`, error);
-      await interaction.followUp({ content: 'An error occurred.' });
     }
   },
 };

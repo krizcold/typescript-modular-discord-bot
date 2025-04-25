@@ -1,30 +1,34 @@
-import { 
-  Client, 
-  CommandInteraction, 
-  GatewayIntentBits, 
-  ButtonBuilder, 
-  ButtonStyle, 
-  ActionRowBuilder, 
-  ButtonInteraction, 
+import {
+  Client,
+  CommandInteraction,
+  GatewayIntentBits,
+  ButtonBuilder,
+  ButtonStyle,
+  ActionRowBuilder,
+  ButtonInteraction,
   MessageFlags
 } from 'discord.js';
-import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler';
 
-interface CommandOptions {
-  name: string;
-  description: string;
-  devOnly?: boolean;
-  testOnly?: boolean;
-  options?: object[];
-  requiredIntents?: GatewayIntentBits[];
-  callback: (client: Client, interaction: CommandInteraction) => void;
-}
+import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler'; // Adjust path
+import { CommandOptions } from '../../../types/CommandTypes'; // Adjust path as needed
 
 const pingButtonCommand: CommandOptions = {
   name: 'ping-button',
   description: 'Sends a ping button!',
   testOnly: true,
-  requiredIntents: [GatewayIntentBits.Guilds, GatewayIntentBits.MessageContent],
+  requiredIntents: [GatewayIntentBits.Guilds],
+
+  initialize: (client: Client) => {
+    registerButtonHandler(
+      client,
+      'ping-response',
+      async (btnClient: Client, btnInteraction: ButtonInteraction) => {
+        await btnInteraction.reply({ content: `Pong! 🏓`, flags: MessageFlags.Ephemeral });
+      },
+      null // Timeout - null means never expires based on time
+    );
+    console.log(`[pingButton.ts] Initialized button handler for ping-response.`);
+  },
 
   callback: async (client: Client, interaction: CommandInteraction) => {
     console.log("Ping button command executed");
@@ -43,10 +47,5 @@ const pingButtonCommand: CommandOptions = {
     });
   },
 };
-
-// Register button handler
-registerButtonHandler('ping-response', async (client: Client, interaction: ButtonInteraction) => {
-  await interaction.reply({ content: `Pong! 🏓`, flags: MessageFlags.Ephemeral });
-}, null);
 
 export = pingButtonCommand;

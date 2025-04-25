@@ -1,4 +1,5 @@
 import { Client, CommandInteraction, GatewayIntentBits } from 'discord.js';
+import { CommandOptions } from '../../../types/CommandTypes';
 
 // Discord.js ping command
 /*
@@ -8,25 +9,12 @@ import { Client, CommandInteraction, GatewayIntentBits } from 'discord.js';
 
 */
 
-interface CommandOptions {
-  name: string;
-  description: string;
-  devOnly?: boolean;
-  testOnly?: boolean;
-  options?: object[];
-  requiredIntents?: GatewayIntentBits[];
-  callback: (client: Client, interaction: CommandInteraction) => void;
-}
-
 const pingCommand: CommandOptions = {
   name: 'ping',
   description: 'Pong!',
-  // devOnly: false,
   testOnly: true,
-  // options: [],
   requiredIntents: [
-    GatewayIntentBits.Guilds, 
-    GatewayIntentBits.MessageContent
+    GatewayIntentBits.Guilds,
   ],
 
   callback: (client: Client, interaction: CommandInteraction) => {
