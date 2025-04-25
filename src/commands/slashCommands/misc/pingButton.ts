@@ -8,7 +8,7 @@ import {
   ButtonInteraction, 
   MessageFlags
 } from 'discord.js';
-import { registerButtonHandler } from '../../internalSetup/events/interactionCreate/buttonHandler';
+import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler';
 
 interface CommandOptions {
   name: string;
