@@ -2,7 +2,7 @@ import {
   Client,
   MessageContextMenuCommandInteraction,
   ApplicationCommandType,
-  // MessageFlags not needed for non-ephemeral reply
+  GatewayIntentBits
 } from 'discord.js';
 
 // Define structure for context menu commands if desired (optional)
@@ -22,10 +22,7 @@ const pingMessageCommand: ContextMenuCommandOptions = {
   name: 'ping-message', // Use hyphen
   type: ApplicationCommandType.Message, // Specify Type 3 for Message context menu
   testOnly: true, // Register in test guild only
-  // permissionsRequired: ['SendMessages'], // Not strictly needed if replying to interaction
-  // botPermissions: ['SendMessages'], // Not strictly needed if replying to interaction
-
-  // No description or options needed for Message context menus
+  requiredIntents: [GatewayIntentBits.Guilds],
 
   callback: async (client: Client, interaction: MessageContextMenuCommandInteraction) => {
     // Defer the reply immediately (visible)

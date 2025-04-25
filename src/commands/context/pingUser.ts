@@ -2,7 +2,7 @@ import {
   Client,
   UserContextMenuCommandInteraction,
   ApplicationCommandType,
-  // MessageFlags not needed for non-ephemeral reply
+  GatewayIntentBits,
 } from 'discord.js';
 
 // Define structure for context menu commands if desired (optional)
@@ -13,7 +13,7 @@ interface ContextMenuCommandOptions {
   devOnly?: boolean;
   permissionsRequired?: string[];
   botPermissions?: string[];
-  requiredIntents?: number[]; // Use GatewayIntentBits if importing
+  requiredIntents?: number[];
   // No description or options for context menu commands
   callback: (client: Client, interaction: UserContextMenuCommandInteraction | any) => void; // Use specific interaction type
 }
@@ -22,8 +22,7 @@ const pingUserCommand: ContextMenuCommandOptions = {
   name: 'ping-user', // Use hyphen
   type: ApplicationCommandType.User, // Specify Type 2 for User context menu
   testOnly: true, // Register in test guild only
-
-  // No description or options needed for User context menus
+  requiredIntents: [GatewayIntentBits.Guilds],
 
   callback: async (client: Client, interaction: UserContextMenuCommandInteraction) => {
     // Defer the reply immediately (visible this time)
