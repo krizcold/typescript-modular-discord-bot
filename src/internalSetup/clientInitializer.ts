@@ -2,40 +2,82 @@ import { Client, GatewayIntentBits } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
 // Updated import path for getAllFiles
-import getAllFiles from './utils/getAllFiles';
+import getAllFiles from './utils/getAllFiles'; // Ensure this is the corrected non-recursive version
 import 'dotenv/config';
 
-// Assuming __dirname resolves correctly relative to the new location
-// Adjust if necessary based on your build process (e.g., using process.cwd())
-const basePath = path.join(__dirname, '..'); // Navigate up from internalSetup to src level
+// Base path calculation (adjust if necessary for your build output)
+const projectRoot = path.join(__dirname, '..', '..');
+const basePath = path.join(projectRoot, 'src');
 
-const isProd = process.env.NODE_ENV === 'development' ? false : true;
+const isProd = process.env.NODE_ENV === 'development' ? false : true; // Keep using NODE_ENV
 
 /**
- * Collects all required intents from files in specified directories.
+ * Collects all required intents recursively from files in specified directories.
+ * Expects directory paths relative to the project root.
  */
-function collectRequiredIntents(...directories: string[]): number[] {
+function collectRequiredIntents(...relativeDirs: string[]): number[] {
   const intents = new Set<number>();
-  for (const directory of directories) {
-    try {
-      const folders = getAllFiles(directory, true); // Get subfolders
-      for (const folder of folders) {
-        if (folder.includes('data') || folder.includes('disabled')) continue;
 
-        const files = getAllFiles(folder); // Get files in subfolder
-        for (const file of files) {
-          try {
-            const mod = require(file);
-            if (mod.requiredIntents && Array.isArray(mod.requiredIntents)) {
-              mod.requiredIntents.forEach((intent: number) => intents.add(intent));
-            }
-          } catch (error) {
-            console.error(`Error loading file for intents ${file}:`, error);
-          }
+  // Recursive function to find intents in files
+  function findIntentsRecursive(directory: string) {
+    // console.log(`[findIntentsRecursive] Scanning: ${directory}`); // Debug log
+
+    // Get immediate files (.ts/.js) in the current directory
+    const filesInDir = getAllFiles(directory, false); // false = get files
+    for (const file of filesInDir) {
+      // Skip disabled files based on path segment
+      if (file.split(path.sep).includes('disabled')) {
+        continue;
       }
+
+      try {
+        // Use require with the absolute path
+        delete require.cache[require.resolve(file)];
+        const mod = require(file);
+
+        // Check for requiredIntents property
+        let intentsArray: number[] | undefined;
+        if (mod && mod.requiredIntents && Array.isArray(mod.requiredIntents)) {
+          intentsArray = mod.requiredIntents;
+        } else if (typeof mod === 'object' && mod !== null && mod.default?.requiredIntents && Array.isArray(mod.default.requiredIntents)) {
+          intentsArray = mod.default.requiredIntents;
+        }
+
+        if (intentsArray) {
+           // console.log(`[findIntentsRecursive] Found intents in ${path.basename(file)}:`, intentsArray); // Debug log
+          intentsArray.forEach((intent: number) => intents.add(intent));
+        }
+      } catch (error) {
+        console.error(`Error loading file for intents ${file}:`, error);
       }
+    }
+
+    // Get immediate subdirectories in the current directory
+    const subDirs = getAllFiles(directory, true); // true = get folders
+    for (const subDir of subDirs) {
+      // Skip disabled folders
+      if (path.basename(subDir) === 'disabled' || subDir.split(path.sep).includes('disabled')) {
+        continue;
+      }
+      // Recurse into the subdirectory
+      findIntentsRecursive(subDir);
+    }
+  }
+
+  // --- Main part of collectRequiredIntents ---
+  for (const relativeDir of relativeDirs) {
+    const absoluteDir = path.join(projectRoot, relativeDir); // Construct absolute path
+    console.log(`[collectRequiredIntents] Starting recursive scan in: ${absoluteDir}`);
+
+    try {
+      if (!fs.existsSync(absoluteDir)) {
+        console.warn(`[collectRequiredIntents] Directory not found: ${absoluteDir}. Skipping.`);
+        continue;
+      }
+      // Start the recursive scan for this base directory
+      findIntentsRecursive(absoluteDir);
     } catch (error) {
-      console.warn(`Warning: Could not read directory for intents ${directory}. Skipping. Error: ${(error as Error).message}`);
+      console.warn(`Warning: Could not fully scan directory for intents ${absoluteDir}. Skipping. Error: ${(error as Error).message}`);
     }
   }
   return Array.from(intents);
@@ -60,14 +102,15 @@ function mergeIntents(...intentArrays: number[][]): number[] {
  * ensuring internal handlers run first.
  */
 async function registerEvents(client: Client) {
-  // Define paths relative to the base src directory
-  const internalEventsDir = path.join(basePath, 'internalSetup', 'events');
-  const userEventsDir = path.join(basePath, 'events');
+  // Define paths relative to the project root
+  const internalEventsDir = path.join(projectRoot, 'src', 'internalSetup', 'events');
+  const userEventsDir = path.join(projectRoot, 'src', 'events');
 
   console.log("Registering events...");
   console.log(`Scanning internal events directory: ${internalEventsDir}`);
   console.log(`Scanning user events directory: ${userEventsDir}`);
 
+  // Get immediate subfolders for event names
   const internalEventFolders = fs.existsSync(internalEventsDir) ? getAllFiles(internalEventsDir, true) : [];
   const userEventFolders = fs.existsSync(userEventsDir) ? getAllFiles(userEventsDir, true) : [];
 
@@ -82,50 +125,48 @@ async function registerEvents(client: Client) {
     eventMap[eventName] = { internal: [], user: [] };
   });
 
-  // Populate the map with internal event files
+  // Populate the map with internal event files (non-recursive file search within event folder)
   for (const folder of internalEventFolders) {
     const eventName = path.basename(folder);
     if (folder.includes('data') || folder.includes('disabled')) continue;
-    const eventFiles = getAllFiles(folder);
+    const eventFiles = getAllFiles(folder, false); // Get files directly in this folder
     eventMap[eventName].internal.push(...eventFiles);
     eventMap[eventName].internal.sort((a, b) => a.localeCompare(b)); // Sort internal files
   }
 
-  // Populate the map with user event files
+  // Populate the map with user event files (non-recursive file search within event folder)
   for (const folder of userEventFolders) {
     const eventName = path.basename(folder);
-      if (folder.includes('data') || folder.includes('disabled')) continue;
-    const eventFiles = getAllFiles(folder);
+    if (folder.includes('data') || folder.includes('disabled')) continue;
+    const eventFiles = getAllFiles(folder, false); // Get files directly in this folder
     eventMap[eventName].user.push(...eventFiles);
     eventMap[eventName].user.sort((a, b) => a.localeCompare(b)); // Sort user files
   }
 
   // Special handling for 'ready' event to ensure registerCommands runs first
+  // Use absolute path for require/filtering
   const commandInitFile = path.join(internalEventsDir, 'ready', isProd ? 'registerCommands.js' : 'registerCommands.ts');
   if (eventMap['ready']) {
-    // Remove it if it exists in the list to avoid duplicates
     eventMap['ready'].internal = eventMap['ready'].internal.filter(file => file !== commandInitFile);
-    // Add it to the very beginning of internal ready events
     eventMap['ready'].internal.unshift(commandInitFile);
   } else {
-      eventMap['ready'] = { internal: [commandInitFile], user: [] };
+    eventMap['ready'] = { internal: [commandInitFile], user: [] };
   }
 
 
   // Register combined listeners for each event type
   for (const [eventName, files] of Object.entries(eventMap)) {
-    // Combine internal and user files, internal first
     const orderedFiles = [...files.internal, ...files.user];
+    if (orderedFiles.length === 0) continue;
 
-    if(orderedFiles.length === 0) continue; // Skip if no handlers for this event
-
-    console.log(`Registering ${eventName} event with handlers:`, orderedFiles.map(f => path.relative(basePath, f)));
+    // Log relative paths for readability
+    console.log(`Registering ${eventName} event with handlers:`, orderedFiles.map(f => path.relative(projectRoot, f)));
 
     client.on(eventName, async (...args) => {
       for (const eventFile of orderedFiles) {
         try {
+          delete require.cache[require.resolve(eventFile)]; // Clear cache
           const eventModule = require(eventFile);
-          // Use default export if available, otherwise named export 'default'
           const handler = eventModule.default || eventModule;
           if (typeof handler === "function") {
             await handler(client, ...args);
@@ -145,19 +186,19 @@ async function registerEvents(client: Client) {
  * Main function that initializes the client.
  */
 async function main() {
-  // Define paths relative to the base src directory
-  const commandsDir = path.join(basePath, 'commands');
-  const internalEventsDir = path.join(basePath, 'internalSetup', 'events');
-  const userEventsDir = path.join(basePath, 'events');
+  // Define paths relative to the project root for collecting intents
+  const commandsDirRelative = path.join('src', 'commands');
+  const internalEventsDirRelative = path.join('src', 'internalSetup', 'events');
+  const userEventsDirRelative = path.join('src', 'events');
 
 
-  // Collect intents from all relevant directories
-  const commandIntents = collectRequiredIntents(commandsDir);
-  const internalEventIntents = collectRequiredIntents(internalEventsDir);
-  const userEventIntents = collectRequiredIntents(userEventsDir);
+  // Collect intents from all relevant directories using relative paths from project root
+  const commandIntents = collectRequiredIntents(commandsDirRelative);
+  const internalEventIntents = collectRequiredIntents(internalEventsDirRelative);
+  const userEventIntents = collectRequiredIntents(userEventsDirRelative);
 
 
-  console.log("Command intents:", commandIntents);
+  console.log("Command intents:", commandIntents); // Should now show values
   console.log("Internal Event intents:", internalEventIntents);
   console.log("User Event intents:", userEventIntents);
 
@@ -173,12 +214,18 @@ async function main() {
   ];
 
   const intents = requiredIntents.length > 0 ? requiredIntents : defaultIntents;
-  const intentsList = intents.map((i) => GatewayIntentBits[i] || i); // Handle potential raw numbers
+  // Ensure conversion to number if needed, handle potential strings/enums
+  const finalIntents = intents.map(intent => typeof intent === 'string' ? GatewayIntentBits[intent as keyof typeof GatewayIntentBits] : intent).filter(i => typeof i === 'number');
+  const intentsList = finalIntents.map((i) => {
+    const intentName = Object.entries(GatewayIntentBits).find(([key, value]) => value === i)?.[0];
+    return intentName || i; // Show name if found, otherwise number
+  });
+
 
   console.log('Logging in with intents:', intentsList);
 
   // Create the client
-  const client = new Client({ intents });
+  const client = new Client({ intents: finalIntents }); // Pass the numeric intents
 
   // Register events (internal first, then user)
   await registerEvents(client);
