@@ -6,50 +6,91 @@ const path = require('path');
 const outputFileName = 'contextExport.txt';
 const srcDir = 'src';
 const rootFilesToInclude = [
-    'package.json',
-    'Dockerfile', // Assuming this exists
-    'docker-compose.yml',
-    'start.sh' // Assuming this exists
-    // README.md will be handled separately
+  'package.json',
+  'README.md', // Added README here
+  'Dockerfile',
+  'docker-compose.yml',
+  'start.sh'
 ];
-const excludedDirs = ['node_modules', 'dist', '.git', 'scripts']; // Directories to always exclude
-const optionalDirs = ['commands', 'events']; // Directories to potentially include
+const baseExcludedDirs = ['node_modules', 'dist', '.git', 'scripts']; // Directories to always exclude
+const optionalDirs = ['commands', 'events']; // Directories to potentially include/exclude
 
 // --- Helper Functions ---
 
 /**
- * Recursively gets all file paths within a directory, respecting exclusions.
+ * Recursively gets all relevant file paths within a directory.
  * @param {string} dirPath The directory path to scan.
- * @param {string[]} currentExcludedDirs The list of directories to exclude in this run.
+ * @param {string[]} currentExcludedDirs The list of directories to exclude.
+ * @param {string[]} fileList Accumulator for file paths.
  * @returns {string[]} An array of full file paths.
  */
-function getAllFilesRecursive(dirPath, currentExcludedDirs) {
-    let files = [];
-    try {
-        const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+function getAllFilesRecursive(dirPath, currentExcludedDirs, fileList = []) {
+  try {
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
 
-        for (const entry of entries) {
-            const fullPath = path.join(dirPath, entry.name);
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
 
-            if (entry.isDirectory()) {
-                // Skip excluded directories
-                if (currentExcludedDirs.includes(entry.name)) {
-                    continue;
-                }
-                // Recursively get files from subdirectories
-                files = files.concat(getAllFilesRecursive(fullPath, currentExcludedDirs));
-            } else if (entry.isFile()) {
-                // Add file path (consider adding file type filters if needed, e.g., .ts, .js)
-                 if (fullPath.endsWith('.ts') || fullPath.endsWith('.js')) { // Only include TS/JS files from src
-                    files.push(fullPath);
-                 }
-            }
+      if (entry.isDirectory()) {
+        if (currentExcludedDirs.includes(entry.name)) {
+          continue; // Skip excluded directories
         }
-    } catch (error) {
-        console.warn(`Warning: Could not read directory ${dirPath}. Skipping. Error: ${error.message}`);
+        getAllFilesRecursive(fullPath, currentExcludedDirs, fileList); // Recurse
+      } else if (entry.isFile()) {
+        // Only include specific file types relevant to context
+        if (fullPath.endsWith('.ts') || fullPath.endsWith('.js') || fullPath.endsWith('.json')) {
+          // Check if the path contains any excluded directory segment
+          const pathSegments = fullPath.split(path.sep);
+          if (!pathSegments.some(segment => currentExcludedDirs.includes(segment))) {
+            fileList.push(fullPath);
+          }
+        }
+      }
     }
-    return files;
+  } catch (error) {
+    console.warn(`Warning: Could not read directory ${dirPath}. Skipping. Error: ${error.message}`);
+  }
+  return fileList;
 }
+
+/**
+ * Recursively finds empty directories within a path, respecting exclusions.
+ * @param {string} dirPath The directory path to scan.
+ * @param {string[]} currentExcludedDirs The list of directories to exclude.
+ * @param {string[]} emptyDirsList Accumulator for empty directory paths.
+ * @returns {string[]} An array of full paths to empty directories.
+ */
+function findEmptyDirsRecursive(dirPath, currentExcludedDirs, emptyDirsList = []) {
+  try {
+    let isEmpty = true;
+    const entries = fs.readdirSync(dirPath, { withFileTypes: true });
+
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+
+      if (entry.isDirectory()) {
+        if (currentExcludedDirs.includes(entry.name)) {
+          continue; // Skip excluded directories
+        }
+        // If we find a non-excluded subdirectory, the current one isn't empty *yet*
+        isEmpty = false;
+        findEmptyDirsRecursive(fullPath, currentExcludedDirs, emptyDirsList); // Recurse
+      } else if (entry.isFile()) {
+        // If we find any file, it's not empty
+        isEmpty = false;
+      }
+    }
+
+    // If, after checking all entries, it's still considered empty, add it
+    if (isEmpty) {
+      emptyDirsList.push(dirPath);
+    }
+  } catch (error) {
+    console.warn(`Warning: Could not read directory ${dirPath} for empty check. Skipping. Error: ${error.message}`);
+  }
+  return emptyDirsList;
+}
+
 
 /**
  * Reads the content of a file safely.
@@ -57,110 +98,107 @@ function getAllFilesRecursive(dirPath, currentExcludedDirs) {
  * @returns {string | null} The file content or null if reading fails.
  */
 function readFileContent(filePath) {
-    try {
-        // Ensure the file exists before reading
-        if (fs.existsSync(filePath)) {
-             return fs.readFileSync(filePath, 'utf-8');
-        } else {
-            console.warn(`Warning: File not found: ${filePath}. Skipping.`);
-            return null;
-        }
-    } catch (error) {
-        console.error(`Error reading file ${filePath}:`, error);
-        return null;
+  try {
+    if (fs.existsSync(filePath)) {
+      return fs.readFileSync(filePath, 'utf-8');
+    } else {
+      console.warn(`Warning: File not found: ${filePath}. Skipping.`);
+      return null;
     }
+  } catch (error) {
+    console.error(`Error reading file ${filePath}:`, error);
+    return null;
+  }
 }
 
 // --- Main Script Logic ---
 
 async function exportContext() {
-    console.log('Starting context export...');
+  console.log('Starting context export...');
 
-    // Determine if optional directories should be included by checking for '--all' flag
-    const includeOptional = process.argv.includes('--all');
-    console.log(`Including optional directories ('${optionalDirs.join(', ')}'): ${includeOptional}`);
+  // Determine if optional directories should be included
+  // Use slice(2) to get arguments passed after "node script.js"
+  const args = process.argv.slice(2);
+  const includeOptional = args.includes('--all');
+  console.log(`Arguments received: [${args.join(', ')}]`);
+  console.log(`Including optional directories ('${optionalDirs.join(', ')}'): ${includeOptional}`);
 
-    let outputContent = '';
+  let outputContent = '';
+  const projectRoot = path.resolve(__dirname, '..'); // Go up one level from scripts/
 
-    // 1. Add App Description from package.json
-    const packageJsonPath = path.resolve(__dirname, '..', 'package.json');
-    const packageJsonContent = readFileContent(packageJsonPath);
-    if (packageJsonContent) {
-        try {
-            const packageData = JSON.parse(packageJsonContent);
-            outputContent += `App Description: ${packageData.description || 'No description found.'}\n\n`;
-        } catch (e) {
-            console.error("Error parsing package.json:", e);
-            outputContent += "App Description: Error parsing package.json\n\n";
-        }
-    } else {
-         outputContent += "App Description: package.json not found.\n\n";
-    }
-
-    // 2. Add README.md content
-    console.log('Processing README.md...');
-    const readmePath = path.resolve(__dirname, '..', 'README.md');
-    const readmeContent = readFileContent(readmePath);
-    if (readmeContent !== null) {
-        const relativePath = path.relative(path.resolve(__dirname, '..'), readmePath);
-        const posixPath = relativePath.split(path.sep).join(path.posix.sep); // Use POSIX separators
-        outputContent += `${posixPath}:\n${readmeContent}\n\n`;
-        console.log(`  Added: ${posixPath}`);
-    }
-
-
-    // 3. Process Other Root Files (excluding README.md again)
-    console.log('Processing other root files...');
-    for (const fileName of rootFilesToInclude) {
-        // Skip README if it was accidentally left in the array
-        if (fileName.toLowerCase() === 'readme.md') continue;
-
-        const filePath = path.resolve(__dirname, '..', fileName);
-        const content = readFileContent(filePath);
-        if (content !== null) {
-            // Use relative path for display
-            const relativePath = path.relative(path.resolve(__dirname, '..'), filePath);
-            const posixPath = relativePath.split(path.sep).join(path.posix.sep); // Use POSIX separators
-            outputContent += `${posixPath}:\n${content}\n\n`;
-            console.log(`  Added: ${posixPath}`);
-        }
-    }
-
-    // 4. Process 'src' Directory
-    console.log(`Processing '${srcDir}' directory...`);
-    const srcPath = path.resolve(__dirname, '..', srcDir);
-    let currentExcluded = [...excludedDirs];
-    if (!includeOptional) {
-        // If --all flag is NOT present, exclude the optional directories
-        currentExcluded = currentExcluded.concat(optionalDirs);
-    } else {
-         console.log(`Including content from: ${optionalDirs.join(', ')}`);
-    }
-
-
-    const srcFiles = getAllFilesRecursive(srcPath, currentExcluded);
-
-    for (const filePath of srcFiles) {
-         const content = readFileContent(filePath);
-         if (content !== null) {
-            // Use relative path for display
-            const relativePath = path.relative(path.resolve(__dirname, '..'), filePath);
-            // Use POSIX separators for consistency
-            const posixPath = relativePath.split(path.sep).join(path.posix.sep);
-            outputContent += `${posixPath}:\n${content}\n\n`;
-            console.log(`  Added: ${posixPath}`);
-         }
-    }
-
-    // 5. Write to Output File
-    const outputFilePath = path.resolve(__dirname, '..', outputFileName);
+  // 1. Add App Description from package.json
+  const packageJsonPath = path.join(projectRoot, 'package.json');
+  const packageJsonContent = readFileContent(packageJsonPath);
+  if (packageJsonContent) {
     try {
-        // Trim trailing newlines before writing
-        fs.writeFileSync(outputFilePath, outputContent.trimEnd(), 'utf-8');
-        console.log(`\nContext successfully exported to: ${outputFilePath}`);
-    } catch (error) {
-        console.error(`\nError writing output file ${outputFileName}:`, error);
+      const packageData = JSON.parse(packageJsonContent);
+      outputContent += `App Description: ${packageData.description || 'No description found.'}\n\n`;
+    } catch (e) {
+      console.error("Error parsing package.json:", e);
+      outputContent += "App Description: Error parsing package.json\n\n";
     }
+  } else {
+    outputContent += "App Description: package.json not found.\n\n";
+  }
+
+
+  // 2. Process Root Files
+  console.log('Processing root files...');
+  for (const fileName of rootFilesToInclude) {
+    const filePath = path.join(projectRoot, fileName);
+    const content = readFileContent(filePath);
+    if (content !== null) {
+      const relativePath = path.relative(projectRoot, filePath);
+      const posixPath = relativePath.split(path.sep).join(path.posix.sep);
+      outputContent += `${posixPath}:\n${content}\n\n`;
+      console.log(`  Added File: ${posixPath}`);
+    }
+  }
+
+  // 3. Process 'src' Directory Files
+  console.log(`Processing '${srcDir}' directory files...`);
+  const srcPath = path.join(projectRoot, srcDir);
+  let currentExcluded = [...baseExcludedDirs]; // Start with base exclusions
+  if (!includeOptional) {
+    currentExcluded = currentExcluded.concat(optionalDirs);
+  }
+  console.log(`Effective excluded directories: [${currentExcluded.join(', ')}]`);
+
+  const srcFiles = getAllFilesRecursive(srcPath, currentExcluded);
+
+  for (const filePath of srcFiles) {
+    const content = readFileContent(filePath);
+    if (content !== null) {
+      const relativePath = path.relative(projectRoot, filePath);
+      const posixPath = relativePath.split(path.sep).join(path.posix.sep);
+      outputContent += `${posixPath}:\n${content}\n\n`;
+      console.log(`  Added File: ${posixPath}`);
+    }
+  }
+
+  // 4. Find and Add Empty Directories within 'src'
+  console.log(`Processing '${srcDir}' for empty directories...`);
+  const emptyDirs = findEmptyDirsRecursive(srcPath, currentExcluded);
+
+  for (const dirPath of emptyDirs) {
+    // Skip adding the base srcPath itself if it happens to be empty
+    if (path.normalize(dirPath) === path.normalize(srcPath)) continue;
+
+    const relativePath = path.relative(projectRoot, dirPath);
+    const posixPath = relativePath.split(path.sep).join(path.posix.sep);
+    outputContent += `${posixPath}/ (empty)\n\n`; // Add trailing slash and marker
+    console.log(`  Added Empty Dir: ${posixPath}/`);
+  }
+
+
+  // 5. Write to Output File
+  const outputFilePath = path.join(projectRoot, outputFileName);
+  try {
+    fs.writeFileSync(outputFilePath, outputContent.trimEnd(), 'utf-8');
+    console.log(`\nContext successfully exported to: ${outputFilePath}`);
+  } catch (error) {
+    console.error(`\nError writing output file ${outputFileName}:`, error);
+  }
 }
 
 // --- Run the script ---
