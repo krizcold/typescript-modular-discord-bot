@@ -1,13 +1,8 @@
 import { Client, ButtonInteraction, MessageFlags, Interaction } from 'discord.js';
+import { RegisteredButtonInfo } from '../../../types/commandTypes';
 
 // Default timeout duration (15 minutes in milliseconds)
 const DEFAULT_BUTTON_TIMEOUT_MS = 15 * 60 * 1000;
-
-// Define the structure for storing handler info (can be moved to types file later)
-interface RegisteredButtonInfo {
-  handler: (client: Client, interaction: ButtonInteraction) => Promise<void>;
-  timeoutMs: number | null;
-}
 
 /**
  * Handles incoming button interactions, using the map attached to the client.

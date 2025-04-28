@@ -6,7 +6,8 @@ import {
   GatewayIntentBits,
   ApplicationCommandType,
   ApplicationCommandOptionData, // More specific type for options
-  Locale // Import Locale for localization types
+  Locale, // Import Locale for localization types
+  ButtonInteraction
 } from 'discord.js';
 
 /**
@@ -68,4 +69,12 @@ export interface ContextMenuCommandOptions<TInteraction extends UserContextMenuC
   initialize?: (client: Client) => void; // One-time setup
   // Use the generic interaction type TInteraction
   callback: (client: Client, interaction: TInteraction) => void;
+}
+
+/**
+ * Interface for defining Button Commands using the bot's custom format.
+ */
+export interface RegisteredButtonInfo {
+  handler: (client: Client, interaction: ButtonInteraction) => Promise<void>;
+  timeoutMs: number | null;
 }

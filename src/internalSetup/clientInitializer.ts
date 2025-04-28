@@ -3,12 +3,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import getAllFiles from './utils/getAllFiles';
 import 'dotenv/config';
+import { RegisteredButtonInfo } from '../types/commandTypes';
 
-// Define structure for button handler info
-interface RegisteredButtonInfo {
-  handler: (client: Client, interaction: ButtonInteraction) => Promise<void>;
-  timeoutMs: number | null;
-}
 
 // Augment the discord.js Client type
 declare module 'discord.js' {
@@ -190,18 +186,17 @@ function collectCommandInitializers() {
  * Runs all collected initialize functions.
  */
 function runInitializers(client: Client) { // Client is passed in
-  console.log(`[Initializer] Running initialization for ${modulesToInitialize.length} modules...`); // Keep this log
+  console.log(`[Initializer] Running initialization for ${modulesToInitialize.length} modules...`);
   if (modulesToInitialize.length === 0) { return; }
   for (const module of modulesToInitialize) {
     let moduleName = module.name || 'Unnamed Module';
     try {
-      // console.log(`[Initializer] Calling initialize() for: ${moduleName}`); // DEBUG LOG REMOVED
       module.initialize(client); // Pass client to initialize function
     } catch (error) {
       console.error(`[Initializer] Error running initialize function for module: ${moduleName}`, error);
     }
   }
-  console.log(`[Initializer] Initialization complete.`); // Keep this log
+  console.log(`[Initializer] Initialization complete.`);
 }
 
 
@@ -210,7 +205,6 @@ function runInitializers(client: Client) { // Client is passed in
  */
 async function main() {
   // Collect intents
-  // console.log('Collecting intents from scripts...'); // DEBUG LOG REMOVED
   const commandsDirRelative = path.join('src', 'commands');
   const internalEventsDirRelative = path.join('src', 'internalSetup', 'events');
   const userEventsDirRelative = path.join('src', 'events');
@@ -225,14 +219,13 @@ async function main() {
   const intents = requiredIntents.length > 0 ? requiredIntents : defaultIntents;
   const finalIntents = intents.map(intent => typeof intent === 'string' ? GatewayIntentBits[intent as keyof typeof GatewayIntentBits] : intent).filter(i => typeof i === 'number');
   const intentsList = finalIntents.map((i) => { const n = Object.entries(GatewayIntentBits).find(([_,v])=>v===i)?.[0]; return n||i; });
-  console.log('Logging in with intents:', intentsList); // Keep this log
+  console.log('Logging in with intents:', intentsList);
 
   // Create the client
   const client = new Client({ intents: finalIntents });
 
   // Initialize the button handler map ON the client
   client.buttonHandlers = new Map<string, RegisteredButtonInfo>();
-  // console.log('[Client Init] Initialized client.buttonHandlers map.'); // DEBUG LOG REMOVED
 
   // Collect command initializers
   collectCommandInitializers();
@@ -244,7 +237,7 @@ async function main() {
   runInitializers(client);
 
   client.once('ready', () => {
-    console.log(`Logged in as ${client.user?.tag}!`); // Keep this log
+    console.log(`Logged in as ${client.user?.tag}!`);
   });
 
   client.login(process.env.DISCORD_TOKEN);
