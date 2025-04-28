@@ -12,6 +12,8 @@ import {
 import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler';
 import { CommandOptions } from '../../../types/commandTypes';
 
+const BUTTON_PREFIX = 'ping-response';
+
 const pingButtonCommand: CommandOptions = {
   name: 'ping-button',
   description: 'Sends a ping button!',
@@ -21,7 +23,7 @@ const pingButtonCommand: CommandOptions = {
   initialize: (client: Client) => {
     registerButtonHandler(
       client,
-      'ping-response',
+      BUTTON_PREFIX,
       async (btnClient: Client, btnInteraction: ButtonInteraction) => {
         await btnInteraction.reply({ content: `Pong! 🏓`, flags: MessageFlags.Ephemeral });
       },
@@ -33,7 +35,7 @@ const pingButtonCommand: CommandOptions = {
     console.log("Ping button command executed");
 
     const button = new ButtonBuilder()
-      .setCustomId('ping-response')
+      .setCustomId(BUTTON_PREFIX)
       .setLabel('Click me!')
       .setStyle(ButtonStyle.Primary);
 
