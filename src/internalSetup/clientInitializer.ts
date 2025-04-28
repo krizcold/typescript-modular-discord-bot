@@ -1,15 +1,14 @@
-import { Client, GatewayIntentBits, Collection, Interaction, ButtonInteraction, StringSelectMenuInteraction, MessageFlags } from 'discord.js'; // Keep imports needed for file logic
+import { Client, GatewayIntentBits, Collection, Interaction, ButtonInteraction, StringSelectMenuInteraction, MessageFlags } from 'discord.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import getAllFiles from './utils/getAllFiles';
 import 'dotenv/config';
-import { RegisteredButtonInfo } from '../types/commandTypes'; // Keep this import
+import { RegisteredButtonInfo, RegisteredDropdownInfo, RegisteredModalInfo } from '../types/commandTypes';
 
 
 const projectRoot = path.join(__dirname, '..', '..');
 const isProd = process.env.NODE_ENV === 'development' ? false : true;
 
-// Get all valid numeric values from the GatewayIntentBits enum
 const validIntentValues = new Set(Object.values(GatewayIntentBits).filter(v => typeof v === 'number'));
 
 // --- collectRequiredIntents and mergeIntents functions ---
@@ -118,10 +117,12 @@ async function loadEventHandlers(client: Client) {
   const handleCommandsPath = path.join(interactionCreateDir, isProd ? 'handleCommands.js' : 'handleCommands.ts');
   const buttonHandlerPath = path.join(interactionCreateDir, isProd ? 'buttonHandler.js' : 'buttonHandler.ts');
   const dropdownHandlerPath = path.join(interactionCreateDir, isProd ? 'dropdownHandler.js' : 'dropdownHandler.ts');
+  const modalSubmitHandlerPath = path.join(interactionCreateDir, isProd ? 'modalSubmitHandler.js' : 'modalSubmitHandler.ts');
   const orderedInternalInteractionHandlers = [
     handleCommandsPath,
     buttonHandlerPath,
-    dropdownHandlerPath
+    dropdownHandlerPath,
+    modalSubmitHandlerPath
   ].filter(p => fs.existsSync(p));
 
   if (eventMap['interactionCreate']) {
@@ -173,10 +174,8 @@ async function loadEventHandlers(client: Client) {
           }
         } catch (error) {
           console.error(`Error executing or processing event handler ${eventFile} for event ${eventName}:`, error);
-          // Corrected check using isRepliable() type guard
           if (interactionOrEvent && typeof (interactionOrEvent as Interaction).isRepliable === 'function' && (interactionOrEvent as Interaction).isRepliable()) {
             try {
-              // Now safe to access replied, deferred, followUp, reply
               if ((interactionOrEvent as Interaction & { replied: boolean; deferred: boolean }).replied || (interactionOrEvent as Interaction & { replied: boolean; deferred: boolean }).deferred) {
                 await (interactionOrEvent as Interaction & { followUp: Function }).followUp({ content: 'An error occurred while processing your request.', flags: MessageFlags.Ephemeral }).catch(() => { });
               } else {
@@ -266,8 +265,8 @@ async function main() {
   const client = new Client({ intents: finalIntents });
 
   client.buttonHandlers = new Map<string, RegisteredButtonInfo>();
-  // Initialize dropdown map using the Client augmentation from commandTypes.ts
-  client.dropdownHandlers = new Map(); // No type needed here as it's augmented
+  client.dropdownHandlers = new Map<string, RegisteredDropdownInfo>();
+  client.modalHandlers = new Map<string, RegisteredModalInfo>();
 
   collectCommandInitializers();
   await loadEventHandlers(client);

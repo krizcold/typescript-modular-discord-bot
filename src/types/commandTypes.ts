@@ -8,7 +8,8 @@ import {
   ApplicationCommandOptionData, // More specific type for options
   Locale, // Import Locale for localization types
   ButtonInteraction,
-  StringSelectMenuInteraction
+  StringSelectMenuInteraction,
+  ModalSubmitInteraction
 } from 'discord.js';
 
 /**
@@ -38,6 +39,7 @@ export interface CommandOptions {
   // Core functions (initialize is optional and comes first)
   initialize?: (client: Client) => void; // One-time setup
   callback: (client: Client, interaction: CommandInteraction) => void; // Execution logic
+  handleModalSubmit?: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
 }
 
 
@@ -70,6 +72,7 @@ export interface ContextMenuCommandOptions<TInteraction extends UserContextMenuC
   initialize?: (client: Client) => void; // One-time setup
   // Use the generic interaction type TInteraction
   callback: (client: Client, interaction: TInteraction) => void;
+  handleModalSubmit?: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
 }
 
 /**
@@ -85,6 +88,11 @@ export interface RegisteredDropdownInfo<TInteraction extends StringSelectMenuInt
   timeoutMs: number | null;
 }
 
+export interface RegisteredModalInfo {
+  handler: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
+  // Timeouts usually don't apply to modal submissions in the same way
+}
+
 // Augment the discord.js Client type within this file
 declare module 'discord.js' {
   interface Client {
@@ -93,5 +101,8 @@ declare module 'discord.js' {
 
     /** Map/Collection to store dropdown handlers. Key: customId prefix, Value: handler info. */
     dropdownHandlers: Map<string, RegisteredDropdownInfo>;
+
+    /** Map to store modal submit handlers. Key: customId, Value: handler info. */
+    modalHandlers: Map<string, RegisteredModalInfo>; // Added modal handlers map
   }
 }
