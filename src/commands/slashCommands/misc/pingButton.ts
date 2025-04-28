@@ -9,8 +9,8 @@ import {
   MessageFlags
 } from 'discord.js';
 
-import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler'; // Adjust path
-import { CommandOptions } from '../../../types/CommandTypes'; // Adjust path as needed
+import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler';
+import { CommandOptions } from '../../../types/commandTypes';
 
 const pingButtonCommand: CommandOptions = {
   name: 'ping-button',
@@ -27,7 +27,6 @@ const pingButtonCommand: CommandOptions = {
       },
       null // Timeout - null means never expires based on time
     );
-    console.log(`[pingButton.ts] Initialized button handler for ping-response.`);
   },
 
   callback: async (client: Client, interaction: CommandInteraction) => {

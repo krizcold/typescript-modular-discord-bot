@@ -1,5 +1,5 @@
 import { Client, CommandInteraction, GatewayIntentBits } from 'discord.js';
-import { CommandOptions } from '../../../types/CommandTypes';
+import { CommandOptions } from '../../../types/commandTypes';
 
 // Discord.js ping command
 /*

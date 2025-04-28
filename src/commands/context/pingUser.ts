@@ -6,7 +6,7 @@ import {
 } from 'discord.js';
 
 // Define structure for context menu commands if desired (optional)
-import { ContextMenuCommandOptions } from '../../types/CommandTypes'; // Adjust path as needed
+import { ContextMenuCommandOptions } from '../../types/commandTypes'; // Adjust path as needed
 
 const pingUserCommand: ContextMenuCommandOptions<UserContextMenuCommandInteraction> = {
   name: 'ping-user', // Use hyphen

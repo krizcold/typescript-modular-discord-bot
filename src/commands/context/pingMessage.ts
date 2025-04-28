@@ -4,7 +4,7 @@ import {
   ApplicationCommandType,
   GatewayIntentBits
 } from 'discord.js';
-import { ContextMenuCommandOptions } from '../../types/CommandTypes';
+import { ContextMenuCommandOptions } from '../../types/commandTypes';
 
 const pingMessageCommand: ContextMenuCommandOptions<MessageContextMenuCommandInteraction> = {
   name: 'ping-message',
