@@ -4,14 +4,14 @@
   "description": "Multi-purpose Discord bot TypeScript base, designed to be modular and easy to work with.",
   "main": "index.js",
   "scripts": {
-  "build": "tsc",
-  "start": "node dist/index.js",
-  "start:watch": "tsc --watch & nodemon --watch dist dist/index.js",
-  "dev": "nodemon --watch src --exec ts-node src/index.ts",
-  "dockerUpdate": "docker build -t super-modular-discord-bot . && docker-compose up -d",
-  "exportContext": "node scripts/exportContext.js"
-}
-,
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "start:watch": "tsc --watch & nodemon --watch dist dist/index.js",
+    "dev": "nodemon --watch src --exec ts-node src/index.ts",
+    "dockerUpdate": "docker build -t super-modular-discord-bot . && docker-compose up -d",
+    "dockerPublish": "dotenv node scripts/dockerPublish.js",
+    "exportContext": "node scripts/exportContext.js"
+  },
   "keywords": [],
   "author": "kriz_cold",
   "license": "MIT",
@@ -21,6 +21,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.13.5",
+    "dotenv-cli": "^8.0.0",
     "nodemon": "^3.1.9",
     "ts-node": "^10.9.2",
     "typescript": "^5.7.3"
