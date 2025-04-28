@@ -7,7 +7,8 @@ import {
   ApplicationCommandType,
   ApplicationCommandOptionData, // More specific type for options
   Locale, // Import Locale for localization types
-  ButtonInteraction
+  ButtonInteraction,
+  StringSelectMenuInteraction
 } from 'discord.js';
 
 /**
@@ -77,4 +78,20 @@ export interface ContextMenuCommandOptions<TInteraction extends UserContextMenuC
 export interface RegisteredButtonInfo {
   handler: (client: Client, interaction: ButtonInteraction) => Promise<void>;
   timeoutMs: number | null;
+}
+
+export interface RegisteredDropdownInfo<TInteraction extends StringSelectMenuInteraction = StringSelectMenuInteraction> {
+  handler: (client: Client, interaction: TInteraction) => Promise<void>;
+  timeoutMs: number | null;
+}
+
+// Augment the discord.js Client type within this file
+declare module 'discord.js' {
+  interface Client {
+    /** Map/Collection to store button handlers. Key: customId prefix, Value: handler info. */
+    buttonHandlers: Map<string, RegisteredButtonInfo>;
+
+    /** Map/Collection to store dropdown handlers. Key: customId prefix, Value: handler info. */
+    dropdownHandlers: Map<string, RegisteredDropdownInfo>;
+  }
 }
