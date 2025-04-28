@@ -1,5 +1,5 @@
 import { Client, ButtonInteraction, MessageFlags, Interaction } from 'discord.js';
-import { RegisteredButtonInfo } from '../../../types/commandTypes';
+import { RegisteredButtonInfo } from '../../../types/commandTypes'; // Import type
 
 // Default timeout duration (15 minutes in milliseconds)
 const DEFAULT_BUTTON_TIMEOUT_MS = 15 * 60 * 1000;
@@ -12,20 +12,36 @@ async function handleButtonInteraction(client: Client, interaction: ButtonIntera
   if (!interaction.isButton()) return;
 
   // --- Use client.buttonHandlers ---
-  const registeredButtons = client.buttonHandlers; // Get map from client
-  // <<< --- COMMENTED OUT DEBUG LOG --- >>>
-  // console.log(`[handleButtonInteraction] Handling interaction ${interaction.customId}. Current map size: ${registeredButtons.size}. Keys: [${Array.from(registeredButtons.keys()).join(', ')}]`);
-
-
-  const [action] = interaction.customId.split('_');
-  const buttonInfo = registeredButtons.get(action);
-
-  // Check if handler exists
-  if (!buttonInfo) {
-    console.warn(`No handler found for button action: ${action} (Full Custom ID: ${interaction.customId})`);
+  const registeredButtons = client.buttonHandlers;
+  if (!registeredButtons) {
+    console.error("[handleButtonInteraction] client.buttonHandlers map not found!");
     try {
-      if (!interaction.replied && !interaction.deferred) { await interaction.deferUpdate(); }
-    } catch (replyError) { console.error("Failed to defer update for unknown button interaction:", replyError); }
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'An internal error occurred (Button map missing).', flags: MessageFlags.Ephemeral });
+      }
+    } catch (replyError) {
+      console.error("Failed to send error reply for missing button map:", replyError);
+    }
+    return;
+  }
+
+  // Use the full customId from the interaction to find the corresponding handler
+  const customId = interaction.customId;
+  const buttonInfo = registeredButtons.get(customId);
+
+
+  // Check if handler exists for this customId
+  if (!buttonInfo) {
+    // Log which specific customId wasn't found
+    console.warn(`No handler found for button customId: ${customId}`);
+    try {
+      // Acknowledge the interaction to prevent "Interaction Failed"
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.deferUpdate(); // Update silently
+      }
+    } catch (deferError) {
+      console.error("Failed to defer update for unknown button interaction:", deferError);
+    }
     return;
   }
 
@@ -35,8 +51,14 @@ async function handleButtonInteraction(client: Client, interaction: ButtonIntera
     const messageAge = interaction.createdTimestamp - interaction.message.createdTimestamp;
     const effectiveTimeout = timeoutMs > 0 ? timeoutMs : DEFAULT_BUTTON_TIMEOUT_MS;
     if (messageAge > effectiveTimeout) {
-      console.log(`Button interaction expired and ignored: ${interaction.customId}`);
-      try { await interaction.deferUpdate(); } catch (error) { console.error(`Error deferring update for expired button interaction:`, error); }
+      console.log(`Button interaction expired and ignored: ${customId}`);
+      try {
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.deferUpdate(); // Update silently
+        }
+      } catch (error) {
+        console.error(`Error deferring update for expired button interaction:`, error);
+      }
       return;
     }
   }
@@ -45,53 +67,61 @@ async function handleButtonInteraction(client: Client, interaction: ButtonIntera
   try {
     await handler(client, interaction);
   } catch (error) {
-    console.error(`Error executing button handler for action "${action}" (ID: ${interaction.customId}):`, error);
+    // Log error with the specific customId
+    console.error(`Error executing button handler for customId "${customId}":`, error);
     try {
-      if (!interaction.replied && !interaction.deferred) { await interaction.reply({ content: 'Error processing button click.', flags: MessageFlags.Ephemeral }); }
-      else { await interaction.followUp({ content: 'Error processing button click.', flags: MessageFlags.Ephemeral }); }
-    } catch (replyError) { console.error("Failed to send error reply/followUp:", replyError); }
+      // Try to reply or follow up with an error message
+      if (!interaction.replied && !interaction.deferred) {
+        await interaction.reply({ content: 'There was an error processing this button click.', flags: MessageFlags.Ephemeral });
+      } else if (!interaction.replied) { // If deferred but not replied
+        await interaction.editReply({ content: 'There was an error processing this button click.' });
+      } else { // If already replied (e.g., via deferUpdate and then handler replied)
+        await interaction.followUp({ content: 'There was an error processing this button click.', flags: MessageFlags.Ephemeral });
+      }
+    } catch (replyError) {
+      console.error("Failed to send error reply/followUp for button handler error:", replyError);
+    }
   }
 }
 
 /**
  * Register a button handler FOR THE GIVEN CLIENT INSTANCE.
+ * The customId provided here MUST exactly match the customId set on the ButtonBuilder.
  * @param client The Client instance to attach the handler map to.
- * @param customIdPrefix The prefix of the customId to handle.
- * @param handler The async function to execute.
- * @param timeoutMs Optional timeout duration (null for never expire).
+ * @param customId The exact customId used for the button.
+ * @param handler The async function to execute when a matching button is clicked.
+ * @param timeoutMs Optional timeout duration (null for never expire based on message age).
  */
 function registerButtonHandler(
   client: Client,
-  customIdPrefix: string,
+  customId: string, // Parameter name changed for clarity, represents the full ID
   handler: (client: Client, interaction: ButtonInteraction) => Promise<void>,
   timeoutMs: number | null = DEFAULT_BUTTON_TIMEOUT_MS
 ) {
-  // --- Use client.buttonHandlers ---
   if (!client.buttonHandlers) {
-    console.error("[registerButtonHandler] client.buttonHandlers map not found! Initializing fallback.");
+    console.error("[registerButtonHandler] client.buttonHandlers map not found! Initializing fallback. This should not happen if clientInitializer is correct.");
     client.buttonHandlers = new Map<string, RegisteredButtonInfo>();
   }
 
-  const registeredButtons = client.buttonHandlers; // Get map from client
-  /*const existingInfo = registeredButtons.get(customIdPrefix);
+  const registeredButtons = client.buttonHandlers;
 
-  if (existingInfo) {
-    console.log(`[i] Button handler prefix "${customIdPrefix}" is being re-registered.`); // Optional log
-  }*/
+  if (registeredButtons.has(customId)) {
+    console.warn(`[!] Overwriting existing button handler for customId: ${customId}`);
+  }
 
-  registeredButtons.set(customIdPrefix, { handler, timeoutMs });
+  registeredButtons.set(customId, { handler, timeoutMs });
   const timeoutDesc = timeoutMs === null ? 'never expires' : `${timeoutMs}ms`;
-  console.log(`[i] Registered button handler for: ${customIdPrefix} (Timeout: ${timeoutDesc})`);
+  console.log(`[i] Registered button handler for customId: ${customId} (Timeout: ${timeoutDesc})`);
 }
 
-// Default Export for the Event Handler System
+// Default Export for the Event Handler System (called by clientInitializer)
 export default async function eventFunction(client: Client, interaction: Interaction) {
   if (!interaction.isButton()) {
     return;
   }
-  // Pass client down to the handler logic
-  await handleButtonInteraction(client, interaction);
+  // Pass client and interaction down to the specific handler logic
+  await handleButtonInteraction(client, interaction as ButtonInteraction);
 }
 
 // Named Export for commands/modules to register their button handlers
-export { registerButtonHandler }; // Keep export name the same
+export { registerButtonHandler };
