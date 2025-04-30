@@ -27,7 +27,7 @@ const pingButtonCommand: CommandOptions = {
       async (btnClient: Client, btnInteraction: ButtonInteraction) => {
         await btnInteraction.reply({ content: `Pong! 🏓`, flags: MessageFlags.Ephemeral });
       },
-      null // Timeout - null means never expires based on time
+      { timeoutMs: null } // options object with timeout set to null (never expires)
     );
   },
 
@@ -41,11 +41,15 @@ const pingButtonCommand: CommandOptions = {
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(button);
 
-    await interaction.reply({
-      content: 'Click the button below to test!',
-      components: [row],
-      flags: MessageFlags.Ephemeral,
-    });
+    try {
+        await interaction.reply({
+          content: 'Click the button below to test!',
+          components: [row],
+          flags: MessageFlags.Ephemeral,
+        });
+    } catch (error) {
+        console.error("Failed to send ping button reply:", error);
+    }
   },
 };
 
