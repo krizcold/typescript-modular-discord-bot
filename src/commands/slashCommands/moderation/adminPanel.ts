@@ -2,28 +2,40 @@ import {
   Client,
   CommandInteraction,
   GatewayIntentBits,
-  PermissionsBitField, // To define command permissions
+  PermissionsBitField,
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ButtonInteraction,
   MessageFlags,
-  PermissionResolvable // Import PermissionResolvable
+  PermissionResolvable
 } from 'discord.js';
-import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler'; // Adjust path if needed
-import { CommandOptions } from '../../../types/commandTypes'; // Adjust path if needed
+import { registerButtonHandler } from '../../../internalSetup/events/interactionCreate/buttonHandler';
+// Import SpecialUserRule type
+import { CommandOptions, SpecialUserRule } from '../../../types/commandTypes';
 
 // Define unique custom IDs for the admin buttons
 const KICK_BUTTON_ID = 'admin_panel_kick';
 const BAN_BUTTON_ID = 'admin_panel_ban';
-const LOGS_BUTTON_ID = 'admin_panel_logs'; // Example button without specific perms
+const LOGS_BUTTON_ID = 'admin_panel_logs';
+const SPECIAL_ACTION_BUTTON_ID = 'admin_panel_special';
 
-// Define the type for the options object passed to registerButtonHandler
-// (Optional, but helps with clarity and type safety)
-type ButtonHandlerOptions = {
-  timeoutMs?: number | null;
-  permissionsRequired?: PermissionResolvable[];
-};
+// Example special user rules
+const specialActionRules: SpecialUserRule[] = [
+  // Top priority: Specific User A gets level 0
+  { type: 'user', id: '123456789012345678', value: 0 }, // Replace with a real ID for testing
+  // Next priority: Specific User B gets level 0
+  { type: 'user', id: '987654321098765432', value: 0 }, // Replace with another real ID
+  // Next: Anyone with BanMembers permission gets level 1
+  { type: 'permission', id: PermissionsBitField.Flags.BanMembers, value: 1 },
+   // Next: Specific User C (who might also have BanMembers) gets level 2 (overrides level 1)
+  { type: 'user', id: '254416953001639938', value: 2 }, // Replace with a real ID
+  // Next: Specific User D gets level 3
+  { type: 'user', id: '250065818925268993', value: 3 }, // Replace with a real ID
+  // Finally: Anyone with KickMembers permission gets level 4 (if they didn't match above)
+  { type: 'permission', id: PermissionsBitField.Flags.KickMembers, value: 4 },
+  // Anyone else who clicks gets the default level (-1)
+];
 
 
 const adminPanelCommand: CommandOptions = {
@@ -31,41 +43,38 @@ const adminPanelCommand: CommandOptions = {
   description: 'Displays an example admin control panel with permission-locked buttons.',
   testOnly: true,
   requiredIntents: [GatewayIntentBits.Guilds],
-  // Require Administrator permission to even run the slash command
   permissionsRequired: [PermissionsBitField.Flags.Administrator],
 
   initialize: (client: Client) => {
-    // Define options object for Kick button
-    const kickOptions: ButtonHandlerOptions = {
-        permissionsRequired: [PermissionsBitField.Flags.KickMembers]
-    };
-    // Correct argument order: handler is 3rd, options is 4th
+    // Register Kick button handler
     registerButtonHandler(
       client,
       KICK_BUTTON_ID,
-      handleKickButton, // 3rd argument: handler function
-      kickOptions       // 4th argument: options object
+      handleKickButton,
+      { permissionsRequired: [PermissionsBitField.Flags.KickMembers] }
     );
 
-    // Define options object for Ban button
-    const banOptions: ButtonHandlerOptions = {
-        permissionsRequired: [PermissionsBitField.Flags.BanMembers]
-    };
-    // Correct argument order
+    // Register Ban button handler
     registerButtonHandler(
       client,
       BAN_BUTTON_ID,
-      handleBanButton, // 3rd argument: handler function
-      banOptions       // 4th argument: options object
+      handleBanButton,
+      { permissionsRequired: [PermissionsBitField.Flags.BanMembers] }
     );
 
-    // Register handler for the LOGS button (no options needed)
-    // Correct argument order
+    // Register Logs button handler
     registerButtonHandler(
       client,
       LOGS_BUTTON_ID,
-      handleLogsButton // 3rd argument: handler function
-      // No 4th argument needed as options are optional
+      handleLogsButton
+    );
+
+    // Register Special Action button handler with special user rules
+    registerButtonHandler(
+        client,
+        SPECIAL_ACTION_BUTTON_ID,
+        handleSpecialActionButton, // New handler function
+        { specialUsers: specialActionRules } // Pass the rules
     );
   },
 
@@ -91,15 +100,25 @@ const adminPanelCommand: CommandOptions = {
       .setStyle(ButtonStyle.Secondary)
       .setEmoji('📜');
 
-    // Create action row
-    const row = new ActionRowBuilder<ButtonBuilder>()
+    // New Special Action button
+    const specialButton = new ButtonBuilder()
+        .setCustomId(SPECIAL_ACTION_BUTTON_ID)
+        .setLabel('Special Action')
+        .setStyle(ButtonStyle.Primary)
+        .setEmoji('✨');
+
+    // Create action rows (max 5 components per row)
+    const row1 = new ActionRowBuilder<ButtonBuilder>()
       .addComponents(kickButton, banButton, logsButton);
+    const row2 = new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(specialButton);
+
 
     // Reply with the panel
     try {
       await interaction.reply({
         content: '🚧 **Admin Panel (Test)** 🚧\nClick buttons to test actions (check console logs).',
-        components: [row],
+        components: [row1, row2], // Add both rows
         // flags: MessageFlags.Ephemeral // Commented out for testing visibility
       });
     } catch (error) {
@@ -110,22 +129,50 @@ const adminPanelCommand: CommandOptions = {
 
 // --- Button Handler Functions ---
 
-async function handleKickButton(client: Client, interaction: ButtonInteraction): Promise<void> {
-  // Permission check already happened in buttonHandler.ts
-  console.log(`[Admin Panel] Kick button triggered by ${interaction.user.tag} (${interaction.user.id})`);
+// Update existing handlers to accept userLevel (though they don't use it here)
+async function handleKickButton(client: Client, interaction: ButtonInteraction, userLevel: number): Promise<void> {
+  console.log(`[Admin Panel] Kick button triggered by ${interaction.user.tag} (${interaction.user.id}) - UserLevel: ${userLevel}`);
   await interaction.reply({ content: 'Kick action triggered (check console). Requires KickMembers permission.', flags: MessageFlags.Ephemeral });
 }
 
-async function handleBanButton(client: Client, interaction: ButtonInteraction): Promise<void> {
-  // Permission check already happened
-  console.log(`[Admin Panel] Ban button triggered by ${interaction.user.tag} (${interaction.user.id})`);
+async function handleBanButton(client: Client, interaction: ButtonInteraction, userLevel: number): Promise<void> {
+  console.log(`[Admin Panel] Ban button triggered by ${interaction.user.tag} (${interaction.user.id}) - UserLevel: ${userLevel}`);
   await interaction.reply({ content: 'Ban action triggered (check console). Requires BanMembers permission.', flags: MessageFlags.Ephemeral });
 }
 
-async function handleLogsButton(client: Client, interaction: ButtonInteraction): Promise<void> {
-  // No specific permission check needed for this button beyond the initial command permission
-  console.log(`[Admin Panel] Logs button triggered by ${interaction.user.tag} (${interaction.user.id})`);
+async function handleLogsButton(client: Client, interaction: ButtonInteraction, userLevel: number): Promise<void> {
+  console.log(`[Admin Panel] Logs button triggered by ${interaction.user.tag} (${interaction.user.id}) - UserLevel: ${userLevel}`);
   await interaction.reply({ content: 'Logs action triggered (check console). Requires Administrator permission (from command).', flags: MessageFlags.Ephemeral });
 }
+
+// New handler function for the special action button
+async function handleSpecialActionButton(client: Client, interaction: ButtonInteraction, userLevel: number): Promise<void> {
+    console.log(`[Admin Panel] Special Action button triggered by ${interaction.user.tag} (${interaction.user.id}) - Received UserLevel: ${userLevel}`);
+
+    let response = '';
+    switch (userLevel) {
+        case 0:
+            response = `You matched a specific user rule (Level 0)! Special response for you.`;
+            break;
+        case 1:
+            response = `You matched the BanMembers permission rule (Level 1)!`;
+            break;
+        case 2:
+            response = `You matched a specific user rule (Level 2), overriding lower priority rules!`;
+            break;
+        case 3:
+             response = `You matched a specific user rule (Level 3)!`;
+            break;
+        case 4:
+            response = `You matched the KickMembers permission rule (Level 4)!`;
+            break;
+        default: // Includes DEFAULT_USER_LEVEL (-1)
+            response = `You didn't match any special rules (Default Level ${userLevel}). Standard response.`;
+            break;
+    }
+
+    await interaction.reply({ content: response, flags: MessageFlags.Ephemeral });
+}
+
 
 export = adminPanelCommand;

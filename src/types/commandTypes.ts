@@ -12,8 +12,13 @@ import {
   StringSelectMenuInteraction,
   ModalSubmitInteraction,
   Message,
-  PermissionResolvable
+  PermissionResolvable // Keep PermissionResolvable
 } from 'discord.js';
+
+// --- Special User Rule Definition ---
+export type SpecialUserRule =
+  | { type: 'user'; id: string; value: number } // Match specific user ID
+  | { type: 'permission'; id: PermissionResolvable; value: number }; // Match permission
 
 /**
  * Interface for defining standard Slash Commands (Type 1)
@@ -72,18 +77,20 @@ export interface ContextMenuCommandOptions<TInteraction extends UserContextMenuC
 // --- Handler Info Interfaces ---
 
 export interface RegisteredButtonInfo {
-    handler: (client: Client, interaction: ButtonInteraction) => Promise<void>;
+    // Update handler signature to accept userLevel
+    handler: (client: Client, interaction: ButtonInteraction, userLevel: number) => Promise<void>;
     timeoutMs: number | null;
-    permissionsRequired?: PermissionResolvable[];
+    permissionsRequired?: PermissionResolvable[]; // For access denial
+    specialUsers?: SpecialUserRule[]; // Optional ordered list for varied responses
 }
 
 export interface RegisteredDropdownInfo<TInteraction extends StringSelectMenuInteraction = StringSelectMenuInteraction> {
-    handler: (client: Client, interaction: TInteraction) => Promise<void>;
+    handler: (client: Client, interaction: TInteraction) => Promise<void>; // Keep original signature for now
     timeoutMs: number | null;
 }
 
 export interface RegisteredModalInfo {
-    handler: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
+    handler: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>; // Keep original signature for now
 }
 
 // --- Augmentation for Discord.js Client ---
