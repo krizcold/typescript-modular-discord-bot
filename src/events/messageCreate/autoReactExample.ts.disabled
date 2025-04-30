@@ -1,0 +1,68 @@
+import { Client, Message, GatewayIntentBits } from 'discord.js';
+import * as utils from '../../internalSetup/utils/reactionUtils'; // Import utils
+
+// --- Configuration for this specific example ---
+const EXAMPLE_COOLDOWN_ID = 'exampleReactCD';
+const RELOAD_MINUTES = 1; // Replenish 1 charge per minute
+const MAX_CHARGES = 5;    // Max 5 reactions available
+const ALLOWED_CHANNELS = ['YOUR_CHANNEL_ID_1', 'YOUR_CHANNEL_ID_2']; // Replace with actual IDs
+const PHRASES_TO_REACT = ['test', 'example', 'react'];
+const EMOJIS_TO_USE = ['👍', '✅', '💯'];
+const MAX_MSG_LENGTH = 100; // Ignore long messages
+const USER_LIMIT_TYPE = 'exampleReactUserLimit';
+const MAX_REACTIONS_PER_USER = 2; // Limit user to 2 reactions (using timestamp reset)
+const USER_RESET_MINUTES = 60; // Reset user limit after 1 hour
+
+export default async (client: Client, message: Message) => {
+  // 1. Basic Checks
+  if (message.author.bot) return;
+  if (message.content.length > MAX_MSG_LENGTH) return;
+
+  // 2. Channel Check (using util)
+  if (!utils.isChannelAllowed(message, ALLOWED_CHANNELS)) {
+    // console.log(`[ExampleReact] Message in ignored channel: ${message.channel.id}`);
+    return;
+  }
+
+  // 3. Cooldown Check (using util)
+  if (!utils.checkCooldown(EXAMPLE_COOLDOWN_ID, RELOAD_MINUTES, MAX_CHARGES)) {
+    // console.log(`[ExampleReact] Bot on cooldown.`);
+    return;
+  }
+
+  // 4. User Limit Check (using util)
+  const scope = message.guild?.id || 'dm'; // Use guild ID or 'dm' for DMs
+  if (!utils.checkUserLimit(USER_LIMIT_TYPE, message.author.id, MAX_REACTIONS_PER_USER, scope, USER_RESET_MINUTES)) {
+     // console.log(`[ExampleReact] User ${message.author.id} has reached their limit.`);
+     return;
+  }
+
+  // 5. Content Check (using util)
+  const matchedPhrase = utils.findMatchingPhrase(message.content, PHRASES_TO_REACT, 'word');
+  if (!matchedPhrase) {
+    // If no match, we need to "refund" the cooldown charge and user limit usage
+    // NOTE: The current utils don't support refunding easily. This highlights a limitation.
+    // For a simple example, we might just proceed or skip refunding.
+    // Let's assume for this example we only proceed if a phrase matches.
+    return;
+  }
+
+  // 6. Perform Action
+  const randomEmoji = EMOJIS_TO_USE[Math.floor(Math.random() * EMOJIS_TO_USE.length)];
+  try {
+    await message.react(randomEmoji);
+    console.log(`[ExampleReact] Reacted to message from ${message.author.tag} with ${randomEmoji} for phrase "${matchedPhrase}"`);
+  } catch (error) {
+    console.error(`[ExampleReact] Failed to react:`, error);
+    // Refund cooldown/user limit if reaction fails? Complex.
+  }
+};
+
+// Optional: Define required intents for this handler
+export const requiredIntents = [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent, // Needed to read message content
+    GatewayIntentBits.GuildMessageReactions, // Needed to add reactions
+];
+

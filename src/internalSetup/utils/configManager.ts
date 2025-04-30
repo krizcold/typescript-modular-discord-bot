@@ -1,41 +1,70 @@
-// src/utils/configManager.ts
 import * as fs from 'fs';
 import * as path from 'path';
+// Import renamed types
+import { ChatReactConfig, ChatReactInstanceConfig } from '../../types/commandTypes';
 
-const configPath = path.resolve(__dirname, '../../config.json');
+const rootConfigPath = path.resolve(__dirname, '../../config.json');
+const configDataDir = path.resolve(__dirname, '../../configData');
+// Rename path variable
+const chatReactConfigPath = path.join(configDataDir, 'chatReactConfig.json');
 
 /**
- * Ensures the config.json file exists. If not, creates an empty one.
+ * Ensures a specific config file exists in a given directory. If not, creates an empty one.
  */
-function ensureConfigFile(): void {
-  if (!fs.existsSync(configPath)) {
-    fs.writeFileSync(configPath, JSON.stringify({}, null, 2), 'utf-8');
+function ensureConfigFile(dirPath: string, filePath: string, defaultContent: string = '{}'): void {
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true });
+  }
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, defaultContent, 'utf-8');
+    console.log(`[ConfigManager] Created default config file: ${path.relative(path.resolve(__dirname, '../..'), filePath)}`);
   }
 }
 
 /**
- * Retrieves a property from the config file. If the property doesn't exist,
- * it is set to the provided default value and saved.
- *
- * @param property The property name (as a string key)
- * @param defaultValue The default value to use if the property is missing
- * @returns The value of the property from the config file.
+ * Reads a JSON config file.
+ */
+function readConfigFile<T>(filePath: string, defaultValue: T): T {
+  if (!fs.existsSync(filePath)) {
+    return defaultValue;
+  }
+  try {
+    const configRaw = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(configRaw || JSON.stringify(defaultValue));
+  } catch (e) {
+    console.error(`[ConfigManager] Error reading/parsing ${path.basename(filePath)}:`, e);
+    return defaultValue;
+  }
+}
+
+/**
+ * Retrieves a property from the ROOT config file (config.json).
  */
 export function getConfigProperty<T>(property: string, defaultValue: T): T {
-  ensureConfigFile();
-  const configRaw = fs.readFileSync(configPath, 'utf-8');
-  let config;
-  try {
-    config = JSON.parse(configRaw);
-  } catch (e) {
-    config = {};
-  }
+  ensureConfigFile(path.dirname(rootConfigPath), rootConfigPath);
+  const config = readConfigFile(rootConfigPath, { [property]: defaultValue });
 
   if (config[property] === undefined) {
-    // Save the default value in the config file
     config[property] = defaultValue;
-    fs.writeFileSync(configPath, JSON.stringify(config, null, 2), 'utf-8');
+    try {
+      fs.writeFileSync(rootConfigPath, JSON.stringify(config, null, 2), 'utf-8');
+    } catch (e) {
+        console.error(`[ConfigManager] Error writing default property '${property}' to ${path.basename(rootConfigPath)}:`, e);
+    }
     return defaultValue;
   }
   return config[property];
+}
+
+
+/**
+ * Loads the entire ChatReact configuration from src/configData/chatReactConfig.json.
+ * Creates a default empty file if it doesn't exist.
+ * @param defaultValue The default value (usually an empty object) if the file is missing or invalid.
+ * @returns The loaded ChatReact configuration object.
+ */
+ // Rename function and update types/paths
+export function getChatReactConfig(defaultValue: ChatReactConfig = {}): ChatReactConfig {
+    ensureConfigFile(configDataDir, chatReactConfigPath, JSON.stringify(defaultValue, null, 2));
+    return readConfigFile<ChatReactConfig>(chatReactConfigPath, defaultValue);
 }

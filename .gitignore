@@ -132,6 +132,13 @@ dist
 # config
 config.json
 
+# Data files
+src/events/data/*.json
+src/configData/*.json
+
+# Custom files/exports
 contextExport.txt
 ToDo.txt
+
+# IDEs and editors
 package-lock.json

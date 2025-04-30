@@ -7,7 +7,7 @@
     "build": "tsc",
     "start": "node dist/index.js",
     "start:watch": "tsc --watch & nodemon --watch dist dist/index.js",
-    "dev": "nodemon --watch src --exec ts-node src/index.ts",
+    "dev": "nodemon --watch src --ignore src/configData/* --ignore src/events/data/* --ignore src/config.json --exec ts-node src/index.ts",
     "dockerUpdate": "docker build -t super-modular-discord-bot . && docker-compose up -d",
     "dockerPublish": "dotenv node scripts/dockerPublish.js",
     "exportContext": "node scripts/exportContext.js"
