@@ -25,9 +25,9 @@ async function executePingLogic(client: Client, source: CommandInteraction | Mes
 
 // Command definition using CommandOptions interface
 const pingChatCommand: CommandOptions = {
-  name: 'pingchat', // Changed name slightly to avoid conflict if original ping.ts remains
+  name: 'pingchat',
   description: 'Pong! Replies with bot latency (works via slash or message trigger).',
-  testOnly: true, // Keep as test command for now
+  testOnly: true,
   requiredIntents: [
     GatewayIntentBits.Guilds, // Needed for slash command context
     GatewayIntentBits.GuildMessages, // Needed for message context
