@@ -1,29 +1,43 @@
+name: typescript-modular-discord-bot
+
 services:
-  super-modular-discord-bot:
-    container_name: super-modular-discord-bot
-    image: krizcold/super-modular-discord-bot:latest
+  typescript-modular-discord-bot:
+    image: krizcold/typescript-modular-discord-bot:latest
+    container_name: typescript-modular-discord-bot
     restart: unless-stopped
     environment:
       DISCORD_TOKEN: 'REPLACE WITH YOUR DISCORD BOT TOKEN'
       GUILD_ID: 'REPLACE WITH YOUR DISCORD TEST SERVER ID'
       CLIENT_ID: 'REPLACE WITH THE BOT CLIENT ID'
     volumes:
-      - /C/DATA/smdb-source:/app/smdb-source
-    networks:
-      - pcs
+      - type: bind
+        source: /DATA/AppData/$AppID/smdb-source
+        target: /app/smdb-source
+    network_mode: bridge
+    expose:
+      - 80
     x-casaos:
-      architectures:
-        - amd64
-        - arm64
-      main: super-modular-discord-bot
-      author: kriz_cold
-      category: Chat
-      description:
-        en_us: "A super modular Discord bot base. Drop new commands and events into the mounted folders to extend functionality."
-      title:
-        en_us: "Super Modular Discord Bot"
-      port_map: ""
+      volumes:
+        - container: /app/smdb-source
+          description:
+            en_us: Typescript Modular Discord Bot source directory.
 
-networks:
-  pcs:
-    external: true
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: typescript-modular-discord-bot
+  author: kriz_cold
+  developer: kriz_cold
+  icon: https://github.com/krizcold/AppStore/blob/main/Apps/Typescript-Modular-Discord-Bot/icon.png?raw=true
+  tagline:
+    en_us: "A flexible Discord bot framework"
+  category: Chat
+  description:
+    en_us: "A typescript modular Discord bot base. Drop new commands and events into the mounted folders to extend functionality."
+  title:
+    en_us: "Typescript Modular Discord Bot"
+  port_map: "3000"
+  index: /
+  webui_port: 80
+

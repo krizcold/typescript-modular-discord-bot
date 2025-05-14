@@ -1,4 +1,4 @@
-# Super-Modular-Discord-Bot
+# Typescript-Modular-Discord-Bot
 
 *Kriz_cold's custom all-purpose Typescript ready Discord bot*
 

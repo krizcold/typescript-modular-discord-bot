@@ -1,5 +1,5 @@
 {
-  "name": "super-modular-discord-bot",
+  "name": "typescript-modular-discord-bot",
   "version": "0.0.1",
   "description": "Multi-purpose Discord bot TypeScript base, designed to be modular and easy to work with.",
   "main": "index.js",
@@ -8,7 +8,7 @@
     "start": "node dist/index.js",
     "start:watch": "tsc --watch & nodemon --watch dist dist/index.js",
     "dev": "nodemon --watch src --ignore src/configData/* --ignore src/events/data/* --ignore src/config.json --exec ts-node src/index.ts",
-    "dockerUpdate": "docker build -t super-modular-discord-bot . && docker-compose up -d",
+    "dockerUpdate": "docker build -t typescript-modular-discord-bot . && docker-compose up -d",
     "dockerPublish": "dotenv node scripts/dockerPublish.js",
     "exportContext": "node scripts/exportContext.js"
   },
