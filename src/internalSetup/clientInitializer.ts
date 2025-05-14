@@ -9,6 +9,7 @@ import { RegisteredButtonInfo, RegisteredDropdownInfo, RegisteredModalInfo } fro
 const projectRoot = path.join(__dirname, '..', '..');
 const isProd = process.env.NODE_ENV === 'development' ? false : true;
 
+const scanRoot = isProd ? 'dist' : 'src';
 const validIntentValues = new Set(Object.values(GatewayIntentBits).filter(v => typeof v === 'number'));
 
 // --- collectRequiredIntents and mergeIntents functions ---
@@ -63,8 +64,8 @@ const modulesToInitialize: any[] = [];
  * Loads event handlers and collects modules needing initialization from event files.
  */
 async function loadEventHandlers(client: Client) {
-  const internalEventsDir = path.join(projectRoot, 'src', 'internalSetup', 'events');
-  const userEventsDir = path.join(projectRoot, 'src', 'events');
+  const internalEventsDir = path.join(projectRoot, scanRoot, 'internalSetup', 'events');
+  const userEventsDir = path.join(projectRoot, scanRoot, 'events');
 
   console.log("Loading event handlers...");
 
@@ -195,7 +196,7 @@ async function loadEventHandlers(client: Client) {
  * Collects command modules that have an initialize function.
  */
 function collectCommandInitializers() {
-  const commandsBaseDir = path.join(projectRoot, 'src', 'commands');
+  const commandsBaseDir = path.join(projectRoot, scanRoot, 'commands');
 
   function findInitializersRecursive(directory: string) {
     const filesInDir = getAllFiles(directory, false);
@@ -249,9 +250,9 @@ function runInitializers(client: Client) {
  * Main function that initializes the client.
  */
 async function main() {
-  const commandsDirRelative = path.join('src', 'commands');
-  const internalEventsDirRelative = path.join('src', 'internalSetup', 'events');
-  const userEventsDirRelative = path.join('src', 'events');
+  const commandsDirRelative = path.join(scanRoot, 'commands');
+  const internalEventsDirRelative = path.join(scanRoot, 'internalSetup', 'events');
+  const userEventsDirRelative = path.join(scanRoot, 'events');
   const commandIntents = collectRequiredIntents(commandsDirRelative);
   const internalEventIntents = collectRequiredIntents(internalEventsDirRelative);
   const userEventIntents = collectRequiredIntents(userEventsDirRelative);
