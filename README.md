@@ -248,7 +248,7 @@ If you need to provide the bot's code context to an AI or for review, you can us
     ```
 * **Full Context (Including all Commands and Events):**
     ```bash
-    npm run exportContext --all
+    npm run exportContext -- --all
     ```
 * This will generate a file named `contextExport.txt` in the project's root directory containing the formatted content of the selected project files.
 
