@@ -12,13 +12,36 @@ import {
   StringSelectMenuInteraction,
   ModalSubmitInteraction,
   Message,
-  PermissionResolvable // Keep PermissionResolvable
+  PermissionResolvable,
+  User
 } from 'discord.js';
 
-// --- Special User Rule Definition ---
-export type SpecialUserRule =
-  | { type: 'user'; id: string; value: number } // Match specific user ID
-  | { type: 'permission'; id: PermissionResolvable; value: number }; // Match permission
+// --- Giveaway Data Structure ---
+export interface Giveaway {
+  guildId: string;
+  channelId: string;
+  messageId: string;
+  id: string;
+  title: string;
+  prize: string;
+  endTime: number;
+  startTime: number;
+  creatorId: string;
+  entryMode: 'button' | 'reaction' | 'trivia';
+  winnerCount: number;
+  participants: string[]; // User IDs
+  winners: string[]; // User IDs
+  ended: boolean;
+  cancelled: boolean;
+  triviaQuestion?: string;
+  triviaAnswer?: string;
+  maxTriviaAttempts?: number; // Max attempts for trivia, -1 or 0 for infinite
+  // Optional fields for future features
+  requiredRoles?: string[];
+  blockedRoles?: string[];
+  scheduledStartTime?: number;
+}
+
 
 /**
  * Interface for defining standard Slash Commands (Type 1)
@@ -75,22 +98,25 @@ export interface ContextMenuCommandOptions<TInteraction extends UserContextMenuC
 
 
 // --- Handler Info Interfaces ---
+export type SpecialUserRule =
+  | { type: 'user'; id: string; value: number }
+  | { type: 'permission'; id: PermissionResolvable; value: number };
 
 export interface RegisteredButtonInfo {
     // Update handler signature to accept userLevel
     handler: (client: Client, interaction: ButtonInteraction, userLevel: number) => Promise<void>;
     timeoutMs: number | null;
-    permissionsRequired?: PermissionResolvable[]; // For access denial
-    specialUsers?: SpecialUserRule[]; // Optional ordered list for varied responses
+    permissionsRequired?: PermissionResolvable[];
+    specialUsers?: SpecialUserRule[];
 }
 
 export interface RegisteredDropdownInfo<TInteraction extends StringSelectMenuInteraction = StringSelectMenuInteraction> {
-    handler: (client: Client, interaction: TInteraction) => Promise<void>; // Keep original signature for now
+    handler: (client: Client, interaction: TInteraction) => Promise<void>;
     timeoutMs: number | null;
 }
 
 export interface RegisteredModalInfo {
-    handler: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>; // Keep original signature for now
+    handler: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
 }
 
 // --- Augmentation for Discord.js Client ---
