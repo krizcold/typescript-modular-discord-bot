@@ -105,12 +105,11 @@ function loadGiveaways(forceReload = false): Giveaway[] {
     const rawData = fs.readFileSync(giveawaysFilePath, 'utf-8');
     giveawaysCache = JSON.parse(rawData || '[]');
     cacheLoaded = true;
-    console.log(`[GiveawayManager] ${forceReload ? 'Force reloaded' : 'Loaded'} ${giveawaysCache.length} giveaways into cache.`);
     return giveawaysCache;
   } catch (error) {
     console.error("[GiveawayManager] Error loading giveaways.json:", error);
-    giveawaysCache = []; // Reset cache on error
-    cacheLoaded = true; // Still mark as "loaded" to prevent loops if file is corrupt
+    giveawaysCache = [];
+    cacheLoaded = true;
     return [];
   }
 }
@@ -125,10 +124,9 @@ function saveGiveaways(): void {
 }
 
 export function addGiveaway(giveawayData: Giveaway): Giveaway | null {
-  loadGiveaways(); // Ensure cache is loaded, though not strictly necessary if always saving
+  loadGiveaways();
   if (giveawaysCache.some(g => g.id === giveawayData.id)) {
       console.warn(`[GiveawayManager] Attempted to add giveaway with duplicate ID: ${giveawayData.id}.`);
-      // Optionally, update existing or return null/error
   }
   if (giveawayData.entryMode === 'trivia' && (giveawayData.maxTriviaAttempts === undefined || giveawayData.maxTriviaAttempts === 0)) {
       giveawayData.maxTriviaAttempts = -1;
@@ -140,12 +138,12 @@ export function addGiveaway(giveawayData: Giveaway): Giveaway | null {
 }
 
 export function getGiveaway(giveawayId: string): Giveaway | undefined {
-  loadGiveaways(); // Ensures cache is populated if not already
+  loadGiveaways();
   return giveawaysCache.find(g => g.id === giveawayId);
 }
 
 export function updateGiveaway(giveawayId: string, updatedData: Partial<Giveaway>): boolean {
-  loadGiveaways(); // Ensure cache is populated
+  loadGiveaways();
   const index = giveawaysCache.findIndex(g => g.id === giveawayId);
   if (index === -1) return false;
   giveawaysCache[index] = { ...giveawaysCache[index], ...updatedData };
@@ -154,7 +152,7 @@ export function updateGiveaway(giveawayId: string, updatedData: Partial<Giveaway
 }
 
 export function removeGiveaway(giveawayId: string): boolean {
-  loadGiveaways(); // Ensure cache is populated
+  loadGiveaways();
   const initialLength = giveawaysCache.length;
   giveawaysCache = giveawaysCache.filter(g => g.id !== giveawayId);
   if (activeTimers.has(giveawayId)) {
@@ -169,7 +167,7 @@ export function removeGiveaway(giveawayId: string): boolean {
 }
 
 export function getAllGiveaways(guildId?: string, activeOnly = false): Giveaway[] {
-  loadGiveaways(); // Ensure cache is populated
+  loadGiveaways();
   let filtered = giveawaysCache;
   if (guildId) {
     filtered = filtered.filter(g => g.guildId === guildId);
@@ -184,7 +182,7 @@ export function getAllGiveaways(guildId?: string, activeOnly = false): Giveaway[
 export function addParticipant(giveawayId: string, userId: string): boolean {
     const giveaway = getGiveaway(giveawayId);
     if (!giveaway || giveaway.ended || giveaway.cancelled || giveaway.endTime <= Date.now()) return false;
-    if (giveaway.participants.includes(userId)) return false; // Already participated
+    if (giveaway.participants.includes(userId)) return false;
     giveaway.participants.push(userId);
     return updateGiveaway(giveawayId, { participants: giveaway.participants });
 }
@@ -193,15 +191,10 @@ export function addParticipant(giveawayId: string, userId: string): boolean {
 
 async function processEndedGiveaway(client: Client, giveawayId: string): Promise<void> {
     console.log(`[GiveawayManager] Processing end for giveaway ID: ${giveawayId}`);
-    const giveaway = getGiveaway(giveawayId); // getGiveaway loads cache if needed
-    if (!giveaway) {
-        console.warn(`[GiveawayManager] Giveaway ${giveawayId} not found during processing.`);
+    const giveaway = getGiveaway(giveawayId);
+    if (!giveaway || giveaway.ended || giveaway.cancelled) {
+        console.log(`[GiveawayManager] Giveaway ${giveawayId} already ended, cancelled, or not found.`);
         activeTimers.delete(giveawayId);
-        return;
-    }
-    if (giveaway.ended || giveaway.cancelled) {
-        console.log(`[GiveawayManager] Giveaway ${giveawayId} already ended or cancelled. Skipping processing.`);
-        activeTimers.delete(giveawayId); // Ensure timer is cleared if somehow still present
         return;
     }
 
@@ -219,9 +212,8 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
         }
     }
 
-    // Update giveaway state in cache and persist to file
     updateGiveaway(giveawayId, { ended: true, winners: winners.map(w => w.id) });
-    activeTimers.delete(giveawayId); // Remove from active timers
+    activeTimers.delete(giveawayId);
 
     try {
         const channel = await client.channels.fetch(giveaway.channelId);
@@ -231,7 +223,7 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
 
             const resultEmbed = new EmbedBuilder()
                 .setTitle(`🎉 Giveaway Ended: ${giveaway.title} 🎉`)
-                .setColor(Colors.Grey);
+                .setColor(Colors.Grey); // Use Colors.Grey for ended state
 
             let winnerMentions = "*No winners were selected (no participants or an error occurred).*";
             if (winners.length > 0) {
@@ -240,6 +232,7 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
             } else {
                 resultEmbed.setDescription('*Unfortunately, there were no participants in this giveaway, so no winner could be chosen.*');
             }
+            // Simple, plain text footer for the results message
             resultEmbed.setFooter({ text: `Giveaway Concluded` });
 
 
@@ -258,8 +251,8 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
                     .setDescription(`*This giveaway has ended! [View Results](${resultMessage.url})*`)
                     .setColor(Colors.Grey)
                     .setFields([]) // Clear old fields like "Ends In"
-                    .setFooter({text: `Ended`})
-                    .setTimestamp(giveaway.endTime); // Set timestamp to actual end time
+                    .setFooter({text: `Ended`}) // Simple footer for the original message
+                    .setTimestamp(giveaway.endTime);
                 await originalMessage.edit({ embeds: [endedEmbed], components: [] }).catch(console.error);
             }
         } else {
@@ -271,15 +264,10 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
 }
 
 export function scheduleGiveawayEnd(client: Client, giveaway: Giveaway): void {
-    if (giveaway.ended || giveaway.cancelled) {
-        // console.log(`[GiveawayManager] Giveaway ${giveaway.id} is already ended or cancelled. Not scheduling.`);
-        return;
-    }
+    if (giveaway.ended || giveaway.cancelled) return;
 
     const timeRemaining = giveaway.endTime - Date.now();
-
     if (timeRemaining <= 0) {
-        // console.log(`[GiveawayManager] Giveaway ${giveaway.id} end time has passed. Processing immediately.`);
         processEndedGiveaway(client, giveaway.id).catch(console.error);
     } else {
         if (activeTimers.has(giveaway.id)) {
@@ -290,30 +278,29 @@ export function scheduleGiveawayEnd(client: Client, giveaway: Giveaway): void {
             activeTimers.delete(giveaway.id);
         }, timeRemaining);
         activeTimers.set(giveaway.id, timer);
-        console.log(`[GiveawayManager] Scheduled end for giveaway ${giveaway.id} (${giveaway.title}) in ${formatDuration(timeRemaining)}.`);
+        console.log(`[GiveawayManager] Scheduled end for giveaway ${giveaway.id} in ${timeRemaining}ms`);
     }
 }
 
-/**
- * Loads persisted giveaways and schedules their end or processes them if overdue.
- * This should be called once the client is ready.
- */
 export function scheduleExistingGiveaways(client: Client): void {
-    console.log("[GiveawayManager] Initializing and scheduling/processing ends for existing giveaways...");
-    // Force reload the cache from disk to ensure we are working with the most current data.
-    const allPersistedGiveaways = loadGiveaways(true);
-    let processedCount = 0;
+    console.log("[GiveawayManager] Scheduling ends for existing active giveaways...");
+    loadGiveaways();
+    const potentiallyActiveGiveaways = giveawaysCache.filter(g => !g.ended && !g.cancelled);
 
-    for (const giveaway of allPersistedGiveaways) {
-        // We only care about giveaways that haven't been marked as ended or cancelled yet.
-        if (!giveaway.ended && !giveaway.cancelled) {
-            // scheduleGiveawayEnd will correctly handle if the giveaway's endTime has passed
-            // (by processing it immediately) or if it's still in the future (by setting a timer).
+    let scheduledCount = 0;
+    let processedImmediatelyCount = 0;
+
+    for (const giveaway of potentiallyActiveGiveaways) {
+        if (giveaway.endTime > Date.now()) {
             scheduleGiveawayEnd(client, giveaway);
-            processedCount++;
+            scheduledCount++;
+        } else {
+            console.log(`[GiveawayManager] Giveaway ${giveaway.id} (${giveaway.title}) ended while bot was offline. Processing now.`);
+            processEndedGiveaway(client, giveaway.id).catch(console.error);
+            processedImmediatelyCount++;
         }
     }
-    console.log(`[GiveawayManager] Reviewed ${processedCount} non-ended/non-cancelled persisted giveaways for scheduling/immediate processing.`);
+    console.log(`[GiveawayManager] Scheduled ${scheduledCount} future giveaways. Processed ${processedImmediatelyCount} overdue giveaways.`);
 }
 
 
@@ -348,7 +335,7 @@ export function parseDuration(str: string): number | null {
         if (timeParts.some(isNaN)) return null;
         if (timeParts.length === 3) { totalMs += timeParts[0]*3600000 + timeParts[1]*60000 + timeParts[2]*1000; }
         else if (timeParts.length === 2) { totalMs += timeParts[0]*60000 + timeParts[1]*1000; }
-        else if (timeParts.length === 1 && !str.match(/[dhms]/i)) { totalMs += timeParts[0]*60000; } // Assume minutes if single number without unit
+        else if (timeParts.length === 1 && !str.match(/[dhms]/i)) { totalMs += timeParts[0]*60000; }
         else { return null; } return totalMs > 0 ? totalMs : null;
     }
     for (const part of parts) {
@@ -363,10 +350,9 @@ export function parseDuration(str: string): number | null {
 export function getSessionIdFromCustomId(customId: string, prefix: string): string | null {
     if (customId.startsWith(prefix + '_')) {
         const parts = customId.substring(prefix.length + 1).split('_');
-        return parts[0]; // Return the first part after the prefix, assumed to be the session/giveaway ID
+        return parts[0];
     }
     return null;
 }
 
-// Initial load of giveaways into cache when the module is first imported.
 loadGiveaways();

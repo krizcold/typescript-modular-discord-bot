@@ -103,6 +103,8 @@ const giveawayCommand: CommandOptions = {
     registerButtonHandler(client, GW_TRIVIA_ANSWER_BTN_PREFIX, handleTriviaAnswerButton);
     registerModalHandler(client, GW_TRIVIA_ANSWER_MODAL_PREFIX, handleTriviaAnswerModalSubmit);
     registerButtonHandler(client, GW_CLAIM_PRIZE_BTN_PREFIX, handleClaimPrizeButton);
+
+    giveawayManager.scheduleExistingGiveaways(client);
   },
 
   callback: async (client: Client, interaction: CommandInteraction) => {
