@@ -11,7 +11,7 @@ const DEFAULT_DROPDOWN_TIMEOUT_MS = 15 * 60 * 1000;
 
 /**
  * Handles incoming select menu interactions, using the map attached to the client.
- * Currently focuses on StringSelectMenuInteraction.
+ * Supports exact customId matches and then prefix-based matches.
  */
 async function handleDropdownInteraction(client: Client, interaction: Interaction) {
   // Check if it's a StringSelectMenu interaction
@@ -33,13 +33,33 @@ async function handleDropdownInteraction(client: Client, interaction: Interactio
       return;
   }
 
-  const customId = interaction.customId;
-  const dropdownInfo = registeredDropdowns.get(customId);
+  const incomingCustomId = interaction.customId;
+  let dropdownInfo: RegisteredDropdownInfo | undefined = undefined;
+  let matchedKey: string | undefined = undefined;
+
+  // 1. Check for an exact match first
+  if (registeredDropdowns.has(incomingCustomId)) {
+    dropdownInfo = registeredDropdowns.get(incomingCustomId);
+    matchedKey = incomingCustomId;
+    // console.log(`[DropdownHandler] Exact match found for customId: ${incomingCustomId}`);
+  } else {
+    // 2. If no exact match, check for a prefix match
+    for (const [registeredPrefix, info] of registeredDropdowns.entries()) {
+      if (incomingCustomId.startsWith(registeredPrefix) &&
+          (incomingCustomId.length === registeredPrefix.length || incomingCustomId.charAt(registeredPrefix.length) === '_')) {
+        dropdownInfo = info;
+        matchedKey = registeredPrefix; // The prefix used for registration
+        // console.log(`[DropdownHandler] Prefix match found. Incoming: ${incomingCustomId}, Matched Prefix: ${registeredPrefix}`);
+        break;
+      }
+    }
+  }
+
 
   // Check if handler exists for this customId
-  if (!dropdownInfo) {
+  if (!dropdownInfo || !matchedKey) {
     // Log which specific customId wasn't found
-    console.warn(`No handler found for dropdown customId: ${customId}`);
+    console.warn(`No handler found for dropdown customId: ${incomingCustomId} (neither exact nor prefix match).`);
     try {
       if (!interaction.replied && !interaction.deferred) {
           await interaction.deferUpdate();
@@ -56,7 +76,7 @@ async function handleDropdownInteraction(client: Client, interaction: Interactio
     const messageAge = interaction.createdTimestamp - interaction.message.createdTimestamp;
     const effectiveTimeout = timeoutMs > 0 ? timeoutMs : DEFAULT_DROPDOWN_TIMEOUT_MS;
     if (messageAge > effectiveTimeout) {
-      console.log(`Dropdown interaction expired and ignored: ${customId}`);
+      console.log(`Dropdown interaction expired and ignored: ${incomingCustomId} (handler for ${matchedKey})`);
       try {
         if (!interaction.replied && !interaction.deferred) {
             await interaction.deferUpdate();
@@ -73,13 +93,13 @@ async function handleDropdownInteraction(client: Client, interaction: Interactio
     await handler(client, interaction); // interaction is already known to be StringSelectMenuInteraction
   } catch (error) {
     // Log error with the specific customId
-    console.error(`Error executing dropdown handler for customId "${customId}":`, error);
+    console.error(`Error executing dropdown handler for customId "${incomingCustomId}" (registered as ${matchedKey}):`, error);
     try {
       if (!interaction.replied && !interaction.deferred) {
         await interaction.reply({ content: 'There was an error processing your selection.', flags: MessageFlags.Ephemeral });
-      } else if (!interaction.replied) {
+      } else if (!interaction.replied) { // implies deferred
         await interaction.editReply({ content: 'There was an error processing your selection.' });
-      } else {
+      } else { // implies replied
         await interaction.followUp({ content: 'There was an error processing your selection.', flags: MessageFlags.Ephemeral });
       }
     } catch (replyError) {
@@ -90,15 +110,14 @@ async function handleDropdownInteraction(client: Client, interaction: Interactio
 
 /**
  * Register a dropdown handler FOR THE GIVEN CLIENT INSTANCE.
- * The customIdPrefix provided here MUST exactly match the customId set on the StringSelectMenuBuilder.
  * @param client The Client instance to attach the handler map to.
- * @param customIdPrefix The exact customId used for the select menu.
+ * @param customIdOrPrefix The exact customId (for non-dynamic menus) or a prefix (for dynamic menus).
  * @param handler The async function to execute when a matching dropdown is used.
  * @param timeoutMs Optional timeout duration (null for never expire based on message age).
  */
 function registerDropdownHandler<TInteraction extends StringSelectMenuInteraction = StringSelectMenuInteraction>(
   client: Client,
-  customIdPrefix: string, // Renamed parameter for clarity, but it's the full ID in this usage
+  customIdOrPrefix: string, 
   handler: (client: Client, interaction: TInteraction) => Promise<void>,
   timeoutMs: number | null = DEFAULT_DROPDOWN_TIMEOUT_MS
 ) {
@@ -109,13 +128,13 @@ function registerDropdownHandler<TInteraction extends StringSelectMenuInteractio
 
   const registeredDropdowns = client.dropdownHandlers;
 
-  if (registeredDropdowns.has(customIdPrefix)) {
-     console.warn(`[!] Overwriting existing dropdown handler for customId: ${customIdPrefix}`);
+  if (registeredDropdowns.has(customIdOrPrefix)) {
+     console.warn(`[!] Overwriting existing dropdown handler for customId/prefix: ${customIdOrPrefix}`);
   }
 
-  registeredDropdowns.set(customIdPrefix, { handler: handler as any, timeoutMs });
+  registeredDropdowns.set(customIdOrPrefix, { handler: handler as any, timeoutMs });
   const timeoutDesc = timeoutMs === null ? 'never expires' : `${timeoutMs}ms`;
-  console.log(`[i] Registered dropdown handler for customId: ${customIdPrefix} (Timeout: ${timeoutDesc})`);
+  console.log(`[i] Registered dropdown handler for customId/prefix: ${customIdOrPrefix} (Timeout: ${timeoutDesc})`);
 }
 
 // Default Export for the Event Handler System

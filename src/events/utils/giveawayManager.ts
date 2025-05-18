@@ -11,7 +11,8 @@ import {
   TextBasedChannel,
   User,
   ChannelType,
-  Colors
+  Colors, // Added Colors
+  Message
 } from 'discord.js';
 
 const dataDir = path.resolve(__dirname, '../data');
@@ -176,6 +177,7 @@ export function getAllGiveaways(guildId?: string, activeOnly = false): Giveaway[
     const now = Date.now();
     filtered = filtered.filter(g => !g.ended && !g.cancelled && g.endTime > now);
   }
+  // Sort by startTime descending (newer first)
   return filtered.sort((a, b) => b.startTime - a.startTime);
 }
 
@@ -192,11 +194,25 @@ export function addParticipant(giveawayId: string, userId: string): boolean {
 async function processEndedGiveaway(client: Client, giveawayId: string): Promise<void> {
     console.log(`[GiveawayManager] Processing end for giveaway ID: ${giveawayId}`);
     const giveaway = getGiveaway(giveawayId);
-    if (!giveaway || giveaway.ended || giveaway.cancelled) {
-        console.log(`[GiveawayManager] Giveaway ${giveawayId} already ended, cancelled, or not found.`);
+    if (!giveaway || (giveaway.ended && !giveaway.cancelled) /* Allow re-processing if cancelled but now finishing */) {
+        if (giveaway && giveaway.ended && !giveaway.cancelled) {
+             console.log(`[GiveawayManager] Giveaway ${giveawayId} already ended normally.`);
+        } else if (!giveaway) {
+            console.log(`[GiveawayManager] Giveaway ${giveawayId} not found for processing end.`);
+        }
         activeTimers.delete(giveawayId);
         return;
     }
+    if (giveaway.cancelled) {
+        console.log(`[GiveawayManager] Giveaway ${giveawayId} was cancelled, not processing normal end.`);
+        activeTimers.delete(giveawayId);
+        // Ensure it's marked as ended if cancelled
+        if (!giveaway.ended) {
+            updateGiveaway(giveawayId, { ended: true });
+        }
+        return;
+    }
+
 
     let winners: User[] = [];
     if (giveaway.participants.length > 0) {
@@ -212,18 +228,23 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
         }
     }
 
-    updateGiveaway(giveawayId, { ended: true, winners: winners.map(w => w.id) });
+    updateGiveaway(giveawayId, { ended: true, winners: winners.map(w => w.id), cancelled: false }); // Ensure cancelled is false
     activeTimers.delete(giveawayId);
 
     try {
         const channel = await client.channels.fetch(giveaway.channelId);
 
         if (isChannelDefinitelySendable(channel)) {
-            const originalMessage = await channel.messages.fetch(giveaway.messageId).catch(() => null);
+            let originalMessage: Message | null = null;
+            try {
+                originalMessage = await channel.messages.fetch(giveaway.messageId);
+            } catch (e) {
+                console.warn(`[GiveawayManager] Could not fetch original giveaway message ${giveaway.messageId} for giveaway ${giveawayId}. It might have been deleted.`);
+            }
 
             const resultEmbed = new EmbedBuilder()
                 .setTitle(`🎉 Giveaway Ended: ${giveaway.title} 🎉`)
-                .setColor(Colors.Grey); // Use Colors.Grey for ended state
+                .setColor(Colors.Aqua); // Use a color for ended state
 
             let winnerMentions = "*No winners were selected (no participants or an error occurred).*";
             if (winners.length > 0) {
@@ -232,8 +253,8 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
             } else {
                 resultEmbed.setDescription('*Unfortunately, there were no participants in this giveaway, so no winner could be chosen.*');
             }
-            // Simple, plain text footer for the results message
             resultEmbed.setFooter({ text: `Giveaway Concluded` });
+            resultEmbed.setTimestamp(giveaway.endTime);
 
 
             const claimButton = new ButtonBuilder()
@@ -249,9 +270,9 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
             if (originalMessage) {
                 const endedEmbed = EmbedBuilder.from(originalMessage.embeds[0] || new EmbedBuilder())
                     .setDescription(`*This giveaway has ended! [View Results](${resultMessage.url})*`)
-                    .setColor(Colors.Grey)
-                    .setFields([]) // Clear old fields like "Ends In"
-                    .setFooter({text: `Ended`}) // Simple footer for the original message
+                    .setColor(Colors.Grey) // Keep original message greyed out
+                    .setFields([]) 
+                    .setFooter({text: `Ended`}) 
                     .setTimestamp(giveaway.endTime);
                 await originalMessage.edit({ embeds: [endedEmbed], components: [] }).catch(console.error);
             }
@@ -263,11 +284,73 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
     }
 }
 
+export async function cancelGiveaway(client: Client, giveawayId: string): Promise<boolean> {
+    console.log(`[GiveawayManager] Attempting to cancel giveaway ID: ${giveawayId}`);
+    const giveaway = getGiveaway(giveawayId);
+
+    if (!giveaway) {
+        console.warn(`[GiveawayManager] Cancel failed: Giveaway ${giveawayId} not found.`);
+        return false;
+    }
+    if (giveaway.cancelled) {
+        console.warn(`[GiveawayManager] Cancel failed: Giveaway ${giveawayId} is already cancelled.`);
+        return false;
+    }
+    if (giveaway.ended && !giveaway.cancelled) { // Already ended normally
+        console.warn(`[GiveawayManager] Cancel failed: Giveaway ${giveawayId} has already ended normally.`);
+        return false;
+    }
+
+    const updated = updateGiveaway(giveawayId, { cancelled: true, ended: true, winners: [] });
+    if (!updated) {
+        console.error(`[GiveawayManager] Failed to update giveaway data for cancellation: ${giveawayId}`);
+        return false;
+    }
+
+    if (activeTimers.has(giveawayId)) {
+        clearTimeout(activeTimers.get(giveawayId)!);
+        activeTimers.delete(giveawayId);
+        console.log(`[GiveawayManager] Cleared active timer for cancelled giveaway ${giveawayId}.`);
+    }
+
+    try {
+        const channel = await client.channels.fetch(giveaway.channelId);
+        if (isChannelDefinitelySendable(channel)) {
+            const originalMessage = await channel.messages.fetch(giveaway.messageId).catch(() => null);
+            if (originalMessage) {
+                const cancelledEmbed = EmbedBuilder.from(originalMessage.embeds[0] || new EmbedBuilder())
+                    .setTitle(`🚫 Giveaway Cancelled: ${giveaway.title} 🚫`)
+                    .setDescription(`*This giveaway has been cancelled.*`)
+                    .setColor(Colors.Red)
+                    .setFields([]) // Clear fields like "Ends In"
+                    .setFooter({ text: `Cancelled` })
+                    .setTimestamp(Date.now());
+                await originalMessage.edit({ embeds: [cancelledEmbed], components: [] });
+                console.log(`[GiveawayManager] Edited message for cancelled giveaway ${giveawayId}.`);
+            } else {
+                 console.warn(`[GiveawayManager] Original message not found for cancelled giveaway ${giveawayId}. Cannot edit.`);
+            }
+        } else {
+            console.error(`[GiveawayManager] Channel ${giveaway.channelId} is not sendable for cancelling giveaway ${giveawayId}.`);
+        }
+    } catch (e) {
+        console.error(`[GiveawayManager] Error updating message for cancelled giveaway ${giveawayId}:`, e);
+    }
+    
+    console.log(`[GiveawayManager] Successfully cancelled giveaway ${giveawayId}.`);
+    return true;
+}
+
+
 export function scheduleGiveawayEnd(client: Client, giveaway: Giveaway): void {
-    if (giveaway.ended || giveaway.cancelled) return;
+    if (giveaway.ended || giveaway.cancelled) {
+        console.log(`[GiveawayManager] Giveaway ${giveaway.id} is already ended or cancelled. Not scheduling.`);
+        return;
+    }
 
     const timeRemaining = giveaway.endTime - Date.now();
     if (timeRemaining <= 0) {
+        console.log(`[GiveawayManager] Giveaway ${giveaway.id} end time is in the past. Processing immediately.`);
         processEndedGiveaway(client, giveaway.id).catch(console.error);
     } else {
         if (activeTimers.has(giveaway.id)) {
@@ -284,18 +367,20 @@ export function scheduleGiveawayEnd(client: Client, giveaway: Giveaway): void {
 
 export function scheduleExistingGiveaways(client: Client): void {
     console.log("[GiveawayManager] Scheduling ends for existing active giveaways...");
-    loadGiveaways();
+    loadGiveaways(); // Ensure cache is fresh
     const potentiallyActiveGiveaways = giveawaysCache.filter(g => !g.ended && !g.cancelled);
 
     let scheduledCount = 0;
     let processedImmediatelyCount = 0;
 
     for (const giveaway of potentiallyActiveGiveaways) {
+        // Double check endTime before scheduling
         if (giveaway.endTime > Date.now()) {
             scheduleGiveawayEnd(client, giveaway);
             scheduledCount++;
         } else {
-            console.log(`[GiveawayManager] Giveaway ${giveaway.id} (${giveaway.title}) ended while bot was offline. Processing now.`);
+            // If endtime is past, but it wasn't marked ended (e.g. bot restart)
+            console.log(`[GiveawayManager] Giveaway ${giveaway.id} (${giveaway.title}) ended while bot was offline or was not processed. Processing now.`);
             processEndedGiveaway(client, giveaway.id).catch(console.error);
             processedImmediatelyCount++;
         }
@@ -315,12 +400,12 @@ export function formatDuration(ms: number): string {
     if (d > 0) parts.push(`${d}d`);
     if (h > 0) parts.push(`${h}h`);
     if (m > 0) parts.push(`${m}m`);
-    if (s > 0 && parts.length < 2 && !(d > 0 || h > 0)) { // Only show seconds if no d/h and less than 2 parts (e.g. "30s", "1m 30s")
+    if (s > 0 && parts.length < 2 && !(d > 0 || h > 0)) { 
         parts.push(`${s}s`);
-    } else if (parts.length === 0 && s <= 0) { // If all are zero
+    } else if (parts.length === 0 && s <= 0) { 
          return "0s";
     }
-    if (parts.length === 0) { // If duration was > 0ms but < 1s
+    if (parts.length === 0) { 
         if (ms > 0) return 'Less than 1s';
         return "0s";
     }
@@ -335,7 +420,7 @@ export function parseDuration(str: string): number | null {
         if (timeParts.some(isNaN)) return null;
         if (timeParts.length === 3) { totalMs += timeParts[0]*3600000 + timeParts[1]*60000 + timeParts[2]*1000; }
         else if (timeParts.length === 2) { totalMs += timeParts[0]*60000 + timeParts[1]*1000; }
-        else if (timeParts.length === 1 && !str.match(/[dhms]/i)) { totalMs += timeParts[0]*60000; }
+        else if (timeParts.length === 1 && !str.match(/[dhms]/i)) { totalMs += timeParts[0]*60000; } // Assume minutes if single number without unit
         else { return null; } return totalMs > 0 ? totalMs : null;
     }
     for (const part of parts) {
@@ -350,7 +435,7 @@ export function parseDuration(str: string): number | null {
 export function getSessionIdFromCustomId(customId: string, prefix: string): string | null {
     if (customId.startsWith(prefix + '_')) {
         const parts = customId.substring(prefix.length + 1).split('_');
-        return parts[0];
+        return parts[0]; // The first part after prefix_ is assumed to be the session/giveaway ID
     }
     return null;
 }
