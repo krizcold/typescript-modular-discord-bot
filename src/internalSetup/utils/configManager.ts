@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 // Import renamed types
-import { ChatReactConfig, ChatReactInstanceConfig } from '../../types/commandTypes';
+import { ChatResponseConfig, ChatResponseInstanceConfig } from '../../types/commandTypes';
 
 const rootConfigPath = path.resolve(__dirname, '../../config.json');
 const configDataDir = path.resolve(__dirname, '../../configData');
 // Rename path variable
-const chatReactConfigPath = path.join(configDataDir, 'chatReactConfig.json');
+const chatResponseConfigPath = path.join(configDataDir, 'chatResponseConfig.json');
 
 /**
  * Ensures a specific config file exists in a given directory. If not, creates an empty one.
@@ -58,13 +58,13 @@ export function getConfigProperty<T>(property: string, defaultValue: T): T {
 
 
 /**
- * Loads the entire ChatReact configuration from src/configData/chatReactConfig.json.
+ * Loads the entire ChatResponse configuration from src/configData/chatResponseConfig.json.
  * Creates a default empty file if it doesn't exist.
  * @param defaultValue The default value (usually an empty object) if the file is missing or invalid.
- * @returns The loaded ChatReact configuration object.
+ * @returns The loaded ChatResponse configuration object.
  */
  // Rename function and update types/paths
-export function getChatReactConfig(defaultValue: ChatReactConfig = {}): ChatReactConfig {
-    ensureConfigFile(configDataDir, chatReactConfigPath, JSON.stringify(defaultValue, null, 2));
-    return readConfigFile<ChatReactConfig>(chatReactConfigPath, defaultValue);
+export function getChatResponseConfig(defaultValue: ChatResponseConfig = {}): ChatResponseConfig {
+    ensureConfigFile(configDataDir, chatResponseConfigPath, JSON.stringify(defaultValue, null, 2));
+    return readConfigFile<ChatResponseConfig>(chatResponseConfigPath, defaultValue);
 }

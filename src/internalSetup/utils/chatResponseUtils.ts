@@ -83,13 +83,13 @@ export function isChannelAllowed(message: Message, allowedChannelIds: string[]):
 }
 
 
-// --- User Reaction Limit (JSON based) ---
+// --- User Response Limit (JSON based) ---
 
 const runtimeDataDir = path.resolve(__dirname, '../../events/data');
-const userReactionDataPath = path.join(runtimeDataDir, 'userReactionData.json');
+const userResponseDataPath = path.join(runtimeDataDir, 'userResponseData.json');
 
-interface UserReactionData {
-  [reactionType: string]: {
+interface UserResponseData {
+  [responseType: string]: {
     [guildId: string]: {
       [userId: string]: number;
     }
@@ -100,33 +100,33 @@ function ensureUserDataFile(): void {
   if (!fs.existsSync(runtimeDataDir)) {
     fs.mkdirSync(runtimeDataDir, { recursive: true });
   }
-  if (!fs.existsSync(userReactionDataPath)) {
-    fs.writeFileSync(userReactionDataPath, JSON.stringify({}, null, 2), 'utf-8');
+  if (!fs.existsSync(userResponseDataPath)) {
+    fs.writeFileSync(userResponseDataPath, JSON.stringify({}, null, 2), 'utf-8');
   }
 }
 
-function loadUserData(): UserReactionData {
+function loadUserData(): UserResponseData {
   ensureUserDataFile();
   try {
-    const rawData = fs.readFileSync(userReactionDataPath, 'utf-8');
+    const rawData = fs.readFileSync(userResponseDataPath, 'utf-8');
     return JSON.parse(rawData || '{}');
   } catch (error) {
-    console.error("Error loading user reaction data:", error);
+    console.error("Error loading user response data:", error);
     return {};
   }
 }
 
-function saveUserData(data: UserReactionData): void {
+function saveUserData(data: UserResponseData): void {
   ensureUserDataFile();
   try {
-    fs.writeFileSync(userReactionDataPath, JSON.stringify(data, null, 2), 'utf-8');
+    fs.writeFileSync(userResponseDataPath, JSON.stringify(data, null, 2), 'utf-8');
   } catch (error) {
-    console.error("Error saving user reaction data:", error);
+    console.error("Error saving user response data:", error);
   }
 }
 
 export function checkUserLimit(
-  reactionType: string, // Keep generic, specific ID generated in chatReactManager
+  responseType: string, // Keep generic, specific ID generated in chatResponseManager
   userId: string,
   maxPerUser: number,
   scopeId: string,
@@ -138,79 +138,79 @@ export function checkUserLimit(
     const now = Date.now();
     const resetMillis = resetMinutes ? resetMinutes * 60 * 1000 : 0;
 
-    if (!userData[reactionType]) userData[reactionType] = {};
-    if (!userData[reactionType][scopeId]) userData[reactionType][scopeId] = {};
+    if (!userData[responseType]) userData[responseType] = {};
+    if (!userData[responseType][scopeId]) userData[responseType][scopeId] = {};
 
-    const userTimestamp = userData[reactionType][scopeId][userId] || 0;
+    const userTimestamp = userData[responseType][scopeId][userId] || 0;
 
     if (resetMillis > 0) {
         if (userTimestamp > 0 && now < userTimestamp + resetMillis) {
             return false;
         }
-        userData[reactionType][scopeId][userId] = now;
+        userData[responseType][scopeId][userId] = now;
         saveUserData(userData);
         return true;
     } else {
         if (userTimestamp > 0) {
             return false;
         }
-        userData[reactionType][scopeId][userId] = now;
+        userData[responseType][scopeId][userId] = now;
         saveUserData(userData);
         return true;
     }
 }
 
-// --- ChatReact Data Loading ---
+// --- ChatResponse Data Loading ---
 const configDataDir = path.resolve(__dirname, '../../configData');
-const chatReactDataPath = path.join(configDataDir, 'chatReactData.json'); // Renamed path variable
+const chatResponseDataPath = path.join(configDataDir, 'chatResponseData.json'); // Renamed path variable
 
 // Renamed interface
-interface ChatReactData {
+interface ChatResponseData {
   [key: string]: any[];
 }
 
-let cachedChatReactData: ChatReactData | null = null; // Renamed cache variable
+let cachedChatResponseData: ChatResponseData | null = null; // Renamed cache variable
 let lastReadTimestamp: number = 0;
 
 // Renamed loading function
-function loadChatReactDataFile(): ChatReactData {
+function loadChatResponseDataFile(): ChatResponseData {
   let currentTimestamp = 0;
   try {
-      if (fs.existsSync(chatReactDataPath)) { // Use renamed path
-          currentTimestamp = fs.statSync(chatReactDataPath).mtimeMs;
+      if (fs.existsSync(chatResponseDataPath)) { // Use renamed path
+          currentTimestamp = fs.statSync(chatResponseDataPath).mtimeMs;
       }
   } catch (_) { /* ignore */ }
 
-  if (!cachedChatReactData || currentTimestamp > lastReadTimestamp) { // Use renamed cache variable
-    console.log('[ChatReactData] Reloading chatReactData.json from configData...'); // Updated log
+  if (!cachedChatResponseData || currentTimestamp > lastReadTimestamp) { // Use renamed cache variable
+    console.log('[ChatResponseData] Reloading chatResponseData.json from configData...'); // Updated log
     if (!fs.existsSync(configDataDir)) {
         fs.mkdirSync(configDataDir, { recursive: true });
     }
-    if (!fs.existsSync(chatReactDataPath)) { // Use renamed path
-      console.warn(`[ChatReactData] Data file not found: ${chatReactDataPath}. Creating empty file.`); // Updated log
-      fs.writeFileSync(chatReactDataPath, JSON.stringify({}, null, 2), 'utf-8');
-      cachedChatReactData = {}; // Update renamed cache variable
+    if (!fs.existsSync(chatResponseDataPath)) { // Use renamed path
+      console.warn(`[ChatResponseData] Data file not found: ${chatResponseDataPath}. Creating empty file.`); // Updated log
+      fs.writeFileSync(chatResponseDataPath, JSON.stringify({}, null, 2), 'utf-8');
+      cachedChatResponseData = {}; // Update renamed cache variable
     } else {
       try {
-        const rawData = fs.readFileSync(chatReactDataPath, 'utf-8'); // Use renamed path
-        cachedChatReactData = JSON.parse(rawData || '{}'); // Update renamed cache variable
+        const rawData = fs.readFileSync(chatResponseDataPath, 'utf-8'); // Use renamed path
+        cachedChatResponseData = JSON.parse(rawData || '{}'); // Update renamed cache variable
       } catch (error) {
-        console.error(`Error reading or parsing data file ${chatReactDataPath}:`, error); // Use renamed path
-        cachedChatReactData = cachedChatReactData || {}; // Update renamed cache variable
+        console.error(`Error reading or parsing data file ${chatResponseDataPath}:`, error); // Use renamed path
+        cachedChatResponseData = cachedChatResponseData || {}; // Update renamed cache variable
       }
     }
     lastReadTimestamp = currentTimestamp || Date.now();
   }
 
-  return cachedChatReactData!; // Return renamed cache variable
+  return cachedChatResponseData!; // Return renamed cache variable
 }
 
 /**
- * Gets a specific list from the chatReactData file.
+ * Gets a specific list from the chatResponseData file.
  */
  // Renamed getter function
-export function getChatReactList<T = any>(listKey: string): T[] {
-  const data = loadChatReactDataFile(); // Use renamed loader
+export function getChatResponseList<T = any>(listKey: string): T[] {
+  const data = loadChatResponseDataFile(); // Use renamed loader
   const list = data[listKey];
   return Array.isArray(list) ? list as T[] : [];
 }

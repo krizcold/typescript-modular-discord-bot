@@ -1,5 +1,5 @@
 import { Client, Message, GatewayIntentBits } from 'discord.js';
-import * as utils from '../../internalSetup/utils/reactionUtils'; // Import utils
+import * as utils from '../../internalSetup/utils/chatResponseUtils';
 
 // --- Configuration for this specific example ---
 const EXAMPLE_COOLDOWN_ID = 'exampleReactCD';

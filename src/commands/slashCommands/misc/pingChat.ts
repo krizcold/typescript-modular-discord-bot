@@ -39,7 +39,7 @@ const pingChatCommand: CommandOptions = {
     await executePingLogic(client, interaction);
   },
 
-  // Callback for Message-based execution (triggered by chatReactManager)
+  // Callback for Message-based execution (triggered by chatResponseManager)
   messageCallback: async (client: Client, message: Message) => {
     await executePingLogic(client, message);
   },

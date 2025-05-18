@@ -130,15 +130,15 @@ declare module 'discord.js' {
 }
 
 
-// --- ChatReact Config Types ---
-export interface ChatReactConfig {
-  [key: string]: ChatReactInstanceConfig;
+// --- ChatResponse Config Types ---
+export interface ChatResponseConfig {
+  [key: string]: ChatResponseInstanceConfig;
 }
-export interface ChatReactInstanceConfig {
+export interface ChatResponseInstanceConfig {
   enabled?: boolean;
-  reactMode: 'react' | 'reply' | 'respond' | 'command';
+  responseMode: 'react' | 'reply' | 'respond' | 'command';
   triggerListKey?: string;
-  reactListKey: string;
+  responseListKey: string;
   matchMode?: 'exact' | 'word' | 'contains' | 'startsWith';
   allowedChannelsKey?: string;
   reloadMinutes?: number;
