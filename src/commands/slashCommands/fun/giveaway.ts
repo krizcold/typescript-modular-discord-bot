@@ -307,7 +307,12 @@ async function sendListGiveawaysPanel(client: Client, interaction: ButtonInterac
     }
     components.push(new ActionRowBuilder<ButtonBuilder>().addComponents(backToMainButton));
 
-    await interaction.update({ embeds: [embed], components });
+    const payload = { embeds: [embed], components };
+    if (interaction.replied || interaction.deferred) {
+        await interaction.editReply(payload);
+    } else {
+        await interaction.update(payload);
+    }
 }
 
 async function handleListPageNavigationButton(client: Client, interaction: ButtonInteraction, userLevel: number): Promise<void> {
@@ -446,7 +451,13 @@ async function sendSpecificGiveawayPanel(client: Client, interaction: ButtonInte
     }
     
     const components = [actionRow, new ActionRowBuilder<ButtonBuilder>().addComponents(backButton)];
-    await interaction.update({ embeds: [embed], components });
+
+    const payload = { embeds: [embed], components };
+    if (interaction.replied || interaction.deferred) {
+        await interaction.editReply(payload);
+    } else {
+        await interaction.update(payload);
+    }
 }
 
 async function handleDetailPanelActionButton(client: Client, interaction: ButtonInteraction, userLevel: number): Promise<void> {
@@ -462,26 +473,44 @@ async function handleDetailPanelActionButton(client: Client, interaction: Button
     
     const giveaway = giveawayManager.getGiveaway(giveawayId);
     if (!giveaway) {
-        await interaction.reply({content: "Giveaway not found.", flags: MessageFlags.Ephemeral});
-        return sendListGiveawaysPanel(client, interaction, sessionId, listPage); 
+        // Since this function is called from a button, it might be the initial reply/update
+        // We need to ensure we reply or update to avoid an unacknowledged interaction if we return early.
+        const errPayload: InteractionReplyOptions
+            = {content: "Giveaway not found.", embeds: [], components: [], flags: MessageFlags.Ephemeral };
+        if (interaction.replied || interaction.deferred) await interaction.followUp(errPayload);
+        else await interaction.reply(errPayload);
+        //{ ...errPayload, flags: MessageFlags.Ephemeral }
+        
+        // Attempt to go back to list panel if possible (this might fail if interaction is already used ephemerally)
+        // For simplicity, we won't try to call sendListGiveawaysPanel here as it's complex with already replied interactions.
+        return;
     }
 
     const member = interaction.member instanceof GuildMember ? interaction.member : await interaction.guild.members.fetch(interaction.user.id);
     if (!member) {
-        await interaction.reply({content: "Could not verify your permissions.", flags: MessageFlags.Ephemeral}); return;
+        const errPayload: InteractionReplyOptions
+            = {content: "Could not verify your permissions.", flags: MessageFlags.Ephemeral};
+        if (interaction.replied || interaction.deferred) await interaction.followUp(errPayload);
+        else await interaction.reply(errPayload);
+        return;
     }
     const canManage = giveaway.creatorId === interaction.user.id || member.permissions.has(PermissionsBitField.Flags.ManageGuild);
 
     if (!canManage) {
-        await interaction.reply({content: "You don't have permission to perform this action on this giveaway.", flags: MessageFlags.Ephemeral});
+        const errPayload: InteractionReplyOptions
+            = {content: "You don't have permission to perform this action on this giveaway.", flags: MessageFlags.Ephemeral};
+        if (interaction.replied || interaction.deferred) await interaction.followUp(errPayload);
+        else await interaction.reply(errPayload);
         return;
     }
+
+    // Ensure interaction is replied to or deferred before setTimeout
+    // Typically, the update/reply for the action itself handles this.
+    // If an action involves a timeout, we might defer first.
 
     switch (actionType) {
         case ACTION_TYPE_REMOVE:
             const removed = giveawayManager.removeGiveaway(giveawayId);
-            // Unregister reaction handler if it was removed and was reaction based
-            // This should ideally be handled within removeGiveaway or when giveaway is truly gone
             if (removed && giveaway.entryMode === 'reaction' && giveaway.messageId) {
                 unregisterReactionHandler(client, giveaway.messageId);
             }
@@ -489,30 +518,38 @@ async function handleDetailPanelActionButton(client: Client, interaction: Button
                 await interaction.update({content: `Giveaway "${giveaway.title}" has been removed.`, embeds:[], components:[]});
                 setTimeout(() => sendListGiveawaysPanel(client, interaction, sessionId, listPage).catch(console.error), 2000);
             } else {
-                await interaction.reply({content: "Failed to remove giveaway.", flags: MessageFlags.Ephemeral});
+                 if (interaction.replied || interaction.deferred) await interaction.followUp({content: "Failed to remove giveaway.", flags: MessageFlags.Ephemeral});
+                 else await interaction.reply({content: "Failed to remove giveaway.", flags: MessageFlags.Ephemeral});
             }
             break;
         case ACTION_TYPE_CANCEL:
-            const cancelled = await giveawayManager.cancelGiveaway(client, giveawayId); // This now also unregisters reaction handler
+            const cancelled = await giveawayManager.cancelGiveaway(client, giveawayId);
             if (cancelled) {
                  await interaction.update({content: `Giveaway "${giveaway.title}" has been cancelled.`, embeds:[], components:[]});
                  setTimeout(() => sendSpecificGiveawayPanel(client, interaction, sessionId, giveawayId, listPage).catch(console.error), 2000);
             } else {
-                await interaction.reply({content: "Failed to cancel giveaway (it might be already ended/cancelled or not found).", flags: MessageFlags.Ephemeral});
+                if (interaction.replied || interaction.deferred) await interaction.followUp({content: "Failed to cancel giveaway (it might be already ended/cancelled or not found).", flags: MessageFlags.Ephemeral});
+                else await interaction.reply({content: "Failed to cancel giveaway (it might be already ended/cancelled or not found).", flags: MessageFlags.Ephemeral});
             }
             break;
         case ACTION_TYPE_FINISH:
             if (giveaway.ended || giveaway.cancelled) {
-                await interaction.reply({content: "This giveaway has already ended or been cancelled.", flags: MessageFlags.Ephemeral}); return;
+                if (interaction.replied || interaction.deferred) await interaction.followUp({content: "This giveaway has already ended or been cancelled.", flags: MessageFlags.Ephemeral});
+                else await interaction.reply({content: "This giveaway has already ended or been cancelled.", flags: MessageFlags.Ephemeral});
+                return;
             }
-            const updatedGiveaway = { ...giveaway, endTime: Date.now() - 1000 }; 
+            const updatedGiveawayData = { ...giveaway, endTime: Date.now() - 1000 }; 
             giveawayManager.updateGiveaway(giveawayId, { endTime: Date.now() - 1000});
-            giveawayManager.scheduleGiveawayEnd(client, updatedGiveaway); 
+            // Ensure scheduleGiveawayEnd gets the full object for processing if it was just updated
+            const currentGiveawayState = giveawayManager.getGiveaway(giveawayId);
+            if(currentGiveawayState) giveawayManager.scheduleGiveawayEnd(client, currentGiveawayState); 
+
             await interaction.update({content: `Giveaway "${giveaway.title}" is being ended now...`, embeds:[], components:[]});
             setTimeout(() => sendSpecificGiveawayPanel(client, interaction, sessionId, giveawayId, listPage).catch(console.error), 3000); 
             break;
         default:
-            await interaction.reply({content: "Unknown action.", flags: MessageFlags.Ephemeral});
+            if (interaction.replied || interaction.deferred) await interaction.followUp({content: "Unknown action.", flags: MessageFlags.Ephemeral});
+            else await interaction.reply({content: "Unknown action.", flags: MessageFlags.Ephemeral});
     }
 }
 
@@ -829,7 +866,7 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
         const resolvedEmoji = client.emojis.cache.get(emojiId);
 
         if (resolvedEmoji) {
-            if (resolvedEmoji.available) { // Check if the bot can use this emoji
+            if (resolvedEmoji.available) { 
                 reactionIdentifier = emojiId;
                 reactionDisplayEmoji = resolvedEmoji.toString();
             } else {
@@ -841,9 +878,7 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
             return;
         }
     } else {
-        // Unicode emoji. For simplicity, we assume it's valid if not custom.
-        // More robust validation could be added, but `message.react()` will ultimately determine validity.
-        if (emojiInput.length > 0 && emojiInput.length <= 7) { // Basic length check for unicode emojis
+        if (emojiInput.length > 0 && emojiInput.length <= 7) { 
             reactionIdentifier = emojiInput;
             reactionDisplayEmoji = emojiInput;
         } else {
@@ -861,7 +896,6 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
             await interaction.deferUpdate().catch(e => console.error("Defer update failed in setReactionEmojiModal", e));
         }
     } else if (!interaction.replied && !interaction.deferred) {
-        // This case should be rare if above checks for emoji validity are hit first
         await interaction.reply({ content: 'Failed to set the emoji. Please ensure it is valid.', flags: MessageFlags.Ephemeral });
     }
 }
@@ -1068,7 +1102,6 @@ async function handleStartGiveawayNow(client: Client, interaction: ButtonInterac
             .setStyle(ButtonStyle.Primary);
         announcementComponents.push(new ActionRowBuilder<ButtonBuilder>().addComponents(triviaButton));
     }
-    // For 'reaction' mode, no button is added here. The bot will react instead.
 
     try {
         if (!interaction.deferred && !interaction.replied) await interaction.deferUpdate();
@@ -1111,11 +1144,11 @@ async function handleStartGiveawayNow(client: Client, interaction: ButtonInterac
         if (createdGiveaway) {
             if (createdGiveaway.entryMode === 'reaction' && createdGiveaway.reactionIdentifier && createdGiveaway.reactionDisplayEmoji) {
                 try {
-                    await announcementMessage.react(createdGiveaway.reactionDisplayEmoji); // Use display emoji for reacting
+                    await announcementMessage.react(createdGiveaway.reactionDisplayEmoji); 
                     registerReactionHandler(
                         client,
                         announcementMessage.id,
-                        createdGiveaway.reactionIdentifier, // Use identifier for the handler
+                        createdGiveaway.reactionIdentifier, 
                         async (reactionClient, reaction, user) => {
                             giveawayManager.addParticipant(createdGiveaway.id, user.id);
                         },
