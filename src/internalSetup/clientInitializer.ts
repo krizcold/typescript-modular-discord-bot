@@ -3,7 +3,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import getAllFiles from './utils/getAllFiles';
 import 'dotenv/config';
-import { RegisteredButtonInfo, RegisteredDropdownInfo, RegisteredModalInfo } from '../types/commandTypes';
+import { RegisteredButtonInfo, RegisteredDropdownInfo, RegisteredModalInfo, RegisteredReactionInfo } from '../types/commandTypes';
 
 
 const projectRoot = path.join(__dirname, '..', '..');
@@ -257,7 +257,7 @@ async function main() {
   const internalEventIntents = collectRequiredIntents(internalEventsDirRelative);
   const userEventIntents = collectRequiredIntents(userEventsDirRelative);
   const requiredIntents = mergeIntents(commandIntents, internalEventIntents, userEventIntents);
-  const defaultIntents = [ GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent ];
+  const defaultIntents = [ GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMessageReactions ];
   const intents = requiredIntents.length > 0 ? requiredIntents : defaultIntents;
   const finalIntents = intents.map(intent => typeof intent === 'string' ? GatewayIntentBits[intent as keyof typeof GatewayIntentBits] : intent).filter(i => typeof i === 'number');
   const intentsList = finalIntents.map((i) => { const n = Object.entries(GatewayIntentBits).find(([_,v])=>v===i)?.[0]; return n||i; });
@@ -268,6 +268,7 @@ async function main() {
   client.buttonHandlers = new Map<string, RegisteredButtonInfo>();
   client.dropdownHandlers = new Map<string, RegisteredDropdownInfo>();
   client.modalHandlers = new Map<string, RegisteredModalInfo>();
+  client.reactionHandlers = new Map<string, RegisteredReactionInfo>();
 
   collectCommandInitializers();
   await loadEventHandlers(client);

@@ -11,9 +11,11 @@ import {
   TextBasedChannel,
   User,
   ChannelType,
-  Colors, // Added Colors
-  Message
+  Colors,
+  Message,
+  ComponentType
 } from 'discord.js';
+import { unregisterReactionHandler } from '../../internalSetup/events/messageReactionAdd/reactionHandler';
 
 const dataDir = path.resolve(__dirname, '../data');
 const giveawaysFilePath = path.join(dataDir, 'giveaways.json');
@@ -160,6 +162,12 @@ export function removeGiveaway(giveawayId: string): boolean {
       clearTimeout(activeTimers.get(giveawayId));
       activeTimers.delete(giveawayId);
   }
+  // Also attempt to unregister reaction handler if one might exist
+  const giveaway = getGiveaway(giveawayId); // getGiveaway will load from potentially already filtered cache if not careful
+                                            // It's better to fetch giveaway before filtering the main cache.
+                                            // However, removeGiveaway is usually called for *already ended/cancelled* giveaways
+                                            // For safety, we'll assume client is not available here,
+                                            // unregistration should happen in processEnded or cancel.
   if (giveawaysCache.length < initialLength) {
     saveGiveaways();
     return true;
@@ -194,6 +202,12 @@ export function addParticipant(giveawayId: string, userId: string): boolean {
 async function processEndedGiveaway(client: Client, giveawayId: string): Promise<void> {
     console.log(`[GiveawayManager] Processing end for giveaway ID: ${giveawayId}`);
     const giveaway = getGiveaway(giveawayId);
+
+    // Unregister reaction handler if it was a reaction giveaway
+    if (giveaway && giveaway.entryMode === 'reaction' && giveaway.messageId) {
+        unregisterReactionHandler(client, giveaway.messageId);
+    }
+
     if (!giveaway || (giveaway.ended && !giveaway.cancelled) /* Allow re-processing if cancelled but now finishing */) {
         if (giveaway && giveaway.ended && !giveaway.cancelled) {
              console.log(`[GiveawayManager] Giveaway ${giveawayId} already ended normally.`);
@@ -274,7 +288,33 @@ async function processEndedGiveaway(client: Client, giveawayId: string): Promise
                     .setFields([]) 
                     .setFooter({text: `Ended`}) 
                     .setTimestamp(giveaway.endTime);
-                await originalMessage.edit({ embeds: [endedEmbed], components: [] }).catch(console.error);
+
+                let finalComponents: ActionRowBuilder<ButtonBuilder>[] = [];
+                if (giveaway.entryMode === 'reaction' && originalMessage.components.length > 0) {
+                    // For reaction giveaways, we might want to remove or disable the initial bot reaction
+                    // or any "entry" components if they existed (they shouldn't for reaction mode).
+                    // Simplest is to just clear components.
+                } else if (originalMessage.components.length > 0) {
+                    // For button/trivia, disable existing buttons
+                    const disabledRows = originalMessage.components.map(actionRow => {
+                        const newRow = new ActionRowBuilder<ButtonBuilder>();
+                        actionRow.components.forEach(component => {
+                            if (component.type === ComponentType.Button) {
+                                newRow.addComponents(ButtonBuilder.from(component).setDisabled(true)); // Disable buttons
+                            } else {
+                                newRow.addComponents(component as any); // Keep other components like select menus if any
+                            }
+                        });
+                        return newRow;
+                    });
+                    finalComponents = disabledRows as ActionRowBuilder<ButtonBuilder>[];
+                }
+                
+                await originalMessage.edit({ embeds: [endedEmbed], components: finalComponents }).catch(console.error);
+                if (giveaway.entryMode === 'reaction' && giveaway.reactionDisplayEmoji) {
+                    // Remove all reactions from the original message, or at least the bot's
+                    originalMessage.reactions.removeAll().catch(e => console.warn(`[GiveawayManager] Could not remove reactions from ended giveaway ${giveaway.id}: ${e.message}`));
+                }
             }
         } else {
             console.error(`[GiveawayManager] Could not fetch channel or channel ${giveaway.channelId} is not a sendable text-based channel for giveaway ${giveawayId}.`);
@@ -292,6 +332,12 @@ export async function cancelGiveaway(client: Client, giveawayId: string): Promis
         console.warn(`[GiveawayManager] Cancel failed: Giveaway ${giveawayId} not found.`);
         return false;
     }
+
+    // Unregister reaction handler if it was a reaction giveaway
+    if (giveaway.entryMode === 'reaction' && giveaway.messageId) {
+        unregisterReactionHandler(client, giveaway.messageId);
+    }
+
     if (giveaway.cancelled) {
         console.warn(`[GiveawayManager] Cancel failed: Giveaway ${giveawayId} is already cancelled.`);
         return false;
@@ -326,6 +372,9 @@ export async function cancelGiveaway(client: Client, giveawayId: string): Promis
                     .setFooter({ text: `Cancelled` })
                     .setTimestamp(Date.now());
                 await originalMessage.edit({ embeds: [cancelledEmbed], components: [] });
+                if (giveaway.entryMode === 'reaction') {
+                     originalMessage.reactions.removeAll().catch(e => console.warn(`[GiveawayManager] Could not remove reactions from cancelled giveaway ${giveaway.id}: ${e.message}`));
+                }
                 console.log(`[GiveawayManager] Edited message for cancelled giveaway ${giveawayId}.`);
             } else {
                  console.warn(`[GiveawayManager] Original message not found for cancelled giveaway ${giveawayId}. Cannot edit.`);
@@ -345,6 +394,10 @@ export async function cancelGiveaway(client: Client, giveawayId: string): Promis
 export function scheduleGiveawayEnd(client: Client, giveaway: Giveaway): void {
     if (giveaway.ended || giveaway.cancelled) {
         console.log(`[GiveawayManager] Giveaway ${giveaway.id} is already ended or cancelled. Not scheduling.`);
+        // Ensure reaction handler is cleaned up if somehow missed
+        if (giveaway.entryMode === 'reaction' && giveaway.messageId) {
+            unregisterReactionHandler(client, giveaway.messageId);
+        }
         return;
     }
 

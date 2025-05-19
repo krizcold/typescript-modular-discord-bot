@@ -13,7 +13,8 @@ import {
   ModalSubmitInteraction,
   Message,
   PermissionResolvable,
-  User
+  User,
+  MessageReaction
 } from 'discord.js';
 
 // --- Giveaway Data Structure ---
@@ -36,6 +37,8 @@ export interface Giveaway {
   triviaQuestion?: string;
   triviaAnswer?: string;
   maxTriviaAttempts?: number; // Max attempts for trivia, -1 or 0 for infinite
+  reactionIdentifier?: string; // Custom Emoji ID or Unicode character for the handler
+  reactionDisplayEmoji?: string; // Emoji string for display (e.g., <:name:id> or unicode char)
   // Optional fields for future features
   requiredRoles?: string[];
   blockedRoles?: string[];
@@ -119,6 +122,16 @@ export interface RegisteredModalInfo {
     handler: (client: Client, interaction: ModalSubmitInteraction) => Promise<void>;
 }
 
+export interface RegisteredReactionInfo {
+    handler: (client: Client, reaction: MessageReaction, user: User, self: RegisteredReactionInfo) => Promise<void>;
+    emojiIdentifier: string; // Unicode char or custom emoji ID
+    endTime?: number;
+    guildId?: string;
+    maxEntries?: number; // Overall max entries for this reaction message (0 or undefined for infinite)
+    allowBots?: boolean; // If the handler should process bot reactions (defaults to false)
+    collectedUsers: Set<string>; // Users who have successfully triggered this reaction handler
+}
+
 // --- Augmentation for Discord.js Client ---
 
 declare module 'discord.js' {
@@ -126,6 +139,7 @@ declare module 'discord.js' {
     buttonHandlers: Map<string, RegisteredButtonInfo>;
     dropdownHandlers: Map<string, RegisteredDropdownInfo>;
     modalHandlers: Map<string, RegisteredModalInfo>;
+    reactionHandlers: Map<string, RegisteredReactionInfo>; // Key: messageId
   }
 }
 
