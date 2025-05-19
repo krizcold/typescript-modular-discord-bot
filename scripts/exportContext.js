@@ -7,7 +7,7 @@ const outputFileName = 'contextExport.txt';
 const srcDir = 'src';
 const rootFilesToInclude = [
   'package.json',
-  'README.md', // Added README here
+  'README.md',
   'Dockerfile',
   'docker-compose.yml',
   'start.sh'
