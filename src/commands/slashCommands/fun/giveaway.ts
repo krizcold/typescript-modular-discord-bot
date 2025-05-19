@@ -858,7 +858,10 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
     let reactionDisplayEmoji: string | null = null;
 
     const customEmojiRegex = /<a?:(.+?):(\d+?)>/;
+    const guildEmojiRegex = /:([a-zA-Z0-9_]+?):/; // Regex for :emojiName:
+
     const customMatch = emojiInput.match(customEmojiRegex);
+    const guildMatch = emojiInput.match(guildEmojiRegex);
 
     if (customMatch) {
         const emojiName = customMatch[1];
@@ -866,7 +869,7 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
         const resolvedEmoji = client.emojis.cache.get(emojiId);
 
         if (resolvedEmoji) {
-            if (resolvedEmoji.available) { 
+            if (resolvedEmoji.available) {
                 reactionIdentifier = emojiId;
                 reactionDisplayEmoji = resolvedEmoji.toString();
             } else {
@@ -877,12 +880,38 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
             await interaction.reply({ content: `I could not find the custom emoji "${emojiInput}". Make sure it's a valid emoji I have access to.`, flags: MessageFlags.Ephemeral });
             return;
         }
+    } else if (guildMatch) {
+        const emojiName = guildMatch[1];
+        let foundEmoji = null;
+
+        // Try to find in guild emojis first
+        if (interaction.guild) {
+            foundEmoji = interaction.guild.emojis.cache.find(e => e.name === emojiName);
+        }
+        // If not found in guild or no guild context, try client-wide emojis
+        if (!foundEmoji) {
+            foundEmoji = client.emojis.cache.find(e => e.name === emojiName && e.available); // Ensure available
+        }
+
+        if (foundEmoji) {
+            if (foundEmoji.available) { // Double check availability, especially for client-wide
+                reactionIdentifier = foundEmoji.id;
+                reactionDisplayEmoji = foundEmoji.toString();
+            } else {
+                 await interaction.reply({ content: `The emoji :${emojiName}: was found but is currently unavailable to me (e.g., from an unboosted server or deleted). Please choose another.`, flags: MessageFlags.Ephemeral });
+                return;
+            }
+        } else {
+            await interaction.reply({ content: `I could not find an emoji named :${emojiName}: in this server or among my global emojis. Please use a standard emoji, a custom emoji I have access to (like <:name:id>), or ensure the name is correct.`, flags: MessageFlags.Ephemeral });
+            return;
+        }
     } else {
-        if (emojiInput.length > 0 && emojiInput.length <= 7) { 
+        // Assume standard unicode emoji
+        if (emojiInput.length > 0 && emojiInput.length <= 7) { // Basic length check for unicode
             reactionIdentifier = emojiInput;
             reactionDisplayEmoji = emojiInput;
         } else {
-             await interaction.reply({ content: `"${emojiInput}" doesn't look like a valid standard emoji or is too long. Please provide a single emoji.`, flags: MessageFlags.Ephemeral });
+             await interaction.reply({ content: `"${emojiInput}" doesn't look like a valid standard emoji, a custom emoji format (<:name:id>), or a known guild emoji name (:name:). Please provide a valid emoji.`, flags: MessageFlags.Ephemeral });
             return;
         }
     }
@@ -896,7 +925,8 @@ async function handleSetReactionEmojiModal(client: Client, interaction: ModalSub
             await interaction.deferUpdate().catch(e => console.error("Defer update failed in setReactionEmojiModal", e));
         }
     } else if (!interaction.replied && !interaction.deferred) {
-        await interaction.reply({ content: 'Failed to set the emoji. Please ensure it is valid.', flags: MessageFlags.Ephemeral });
+        // This case should ideally not be hit if all paths above set the identifiers or reply with an error
+        await interaction.reply({ content: 'Failed to set the emoji. An unexpected issue occurred.', flags: MessageFlags.Ephemeral });
     }
 }
 
