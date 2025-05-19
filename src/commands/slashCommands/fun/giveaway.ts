@@ -202,7 +202,11 @@ async function sendMainGiveawayPanel(interaction: CommandInteraction | ButtonInt
         if (creationSessionId) {
             pendingGiveaways.delete(creationSessionId);
         }
-        await interaction.update(basePayload);
+        if (interaction.replied || interaction.deferred) {
+            await interaction.editReply(basePayload);
+        } else {
+            await interaction.update(basePayload);
+        }
     }
 }
 
