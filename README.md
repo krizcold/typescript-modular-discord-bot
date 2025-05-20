@@ -2,6 +2,9 @@
 
 *Kriz_cold's custom all-purpose Typescript ready Discord bot*
 
+# ⚠ WARNING ⚠
+THIS IS AN EARLY WORK IN PROGRESS PROJECT, I MAY MAKE DEEP CHANGES TO THE SYSTEM, FORK AT YOUR DISCRETION
+
 This bot is designed to work with self-contained commands and events, automating the process of adding/removing features to the bot. Once set up, it should be as simple as adding a new file to the commands or events folder, and restarting the bot.
 
 ---
