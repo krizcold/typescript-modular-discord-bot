@@ -16,8 +16,11 @@
   "author": "kriz_cold",
   "license": "MIT",
   "dependencies": {
+    "@discordjs/voice": "^0.18.0",
     "discord.js": "^14.18.0",
-    "dotenv": "^16.4.7"
+    "dotenv": "^16.4.7",
+    "ffmpeg-static": "^5.2.0",
+    "libsodium-wrappers": "^0.7.14"
   },
   "devDependencies": {
     "@types/node": "^22.13.5",
